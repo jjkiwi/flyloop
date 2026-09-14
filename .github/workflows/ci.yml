@@ -1,0 +1,24 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]" ruff
+      - run: ruff check flyloop tests
+      - run: pytest -q
+      # The selftest runs the whole loop and the acceptance experiment; if this
+      # goes red, the sensorimotor pipeline is broken, not just a unit.
+      - run: flyloop selftest

@@ -1,0 +1,75 @@
+import numpy as np
+import pandas as pd
+import pytest
+
+from flyloop.connectome.schema import Connectome, build_signed_matrix
+from flyloop.connectome.signs import sign_of, unknown_transmitters
+from flyloop.connectome.synthetic import synthetic_connectome
+
+
+def test_glutamate_is_inhibitory_in_drosophila():
+    # The single most common sign bug in community reimplementations.
+    assert sign_of("glutamate") == -1
+    assert sign_of("GABA") == -1
+    assert sign_of("acetylcholine") == +1
+
+
+def test_neuromodulators_carry_no_fast_sign():
+    for nt in ("dopamine", "octopamine", "serotonin"):
+        assert sign_of(nt) == 0
+
+
+def test_unknown_transmitters_are_reported_not_guessed():
+    s = pd.Series(["acetylcholine", "kryptonite", "kryptonite"])
+    assert sign_of("kryptonite") == 0
+    assert unknown_transmitters(s).to_dict() == {"kryptonite": 2}
+
+
+def test_signed_matrix_uses_presynaptic_transmitter():
+    neurons = pd.DataFrame(
+        {"id": [1, 2], "type": ["exc", "inh"], "nt": ["acetylcholine", "gaba"]}
+    )
+    edges = pd.DataFrame({"pre": [1, 2], "post": [2, 1], "weight": [7, 5]})
+    W = build_signed_matrix(neurons, edges)
+    assert W[0, 1] == pytest.approx(+7)
+    assert W[1, 0] == pytest.approx(-5)
+
+
+def test_edges_to_unknown_neurons_are_dropped():
+    neurons = pd.DataFrame({"id": [1], "type": ["a"], "nt": ["acetylcholine"]})
+    edges = pd.DataFrame({"pre": [1, 99], "post": [1, 1], "weight": [3, 4]})
+    W = build_signed_matrix(neurons, edges)
+    assert W.nnz == 1
+
+
+def test_population_lookup_and_require():
+    c = synthetic_connectome()
+    assert len(c.population("DNp09")) == 2
+    assert len(c.population(r"^DNa\d+$", regex=True)) == 4
+    with pytest.raises(KeyError):
+        c.require("NoSuchNeuron")
+
+
+def test_subset_preserves_internal_edges():
+    c = synthetic_connectome()
+    idx = np.concatenate([c.population("GF"), c.population("TTMn")])
+    sub = c.subset(idx)
+    assert sub.n == len(idx)
+    assert sub.n_connections > 0
+
+
+def test_roundtrip_save_load(tmp_path):
+    c = synthetic_connectome(n_central=50)
+    c.save(tmp_path / "cx")
+    back = Connectome.load(tmp_path / "cx")
+    assert back.n == c.n
+    assert back.n_connections == c.n_connections
+    assert back.name == c.name
+
+
+def test_shape_mismatch_is_rejected():
+    import scipy.sparse as sp
+
+    neurons = pd.DataFrame({"id": [1, 2], "type": ["a", "b"], "nt": ["gaba", "gaba"]})
+    with pytest.raises(ValueError):
+        Connectome(neurons, sp.csr_matrix((3, 3)))
