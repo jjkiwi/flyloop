@@ -65,6 +65,37 @@ apart** -- three of the four escape in 100% of trials. Only a continuous
 statistic does. That is why the primary measure here is peak escape-population
 firing rate rather than a hit count.
 
+## It runs on the real connectome
+
+```bash
+GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 \
+    https://github.com/YijieYin/connectome_data_prep ~/connectome_data_prep
+flyloop --data-root ~/connectome_data_prep activation --drive LC4 --side L --rate 50
+```
+
+MaleCNS v1.0: 161,429 neurons, 5,988,538 connections, 86,516,520 synapses,
+loaded in about six seconds. Driving the left LC4 population, the looming
+detectors, and reading the descending neurons against three control graphs:
+
+| population | original | rewired | relabelled | signs scrambled |
+|---|---:|---:|---:|---:|
+| DNp04_L | **325.0** | 0.0 | 0.0 | 350.0 |
+| DNp02_L | **225.0** | 0.0 | 0.0 | 305.0 |
+| DNp01_L | **195.0** | 0.0 | 0.0 | 355.0 |
+| DNp09_L | **0.0** | 0.0 | 0.0 | 285.0 |
+| total spikes | 13,324 | 1,594 | 870,981 | 890,053 |
+
+Three things to read off that table, in `docs/RESULTS.md` with the caveats:
+
+- **The response needs the measured wiring.** A degree-preserving rewire kills
+  it completely -- every readout at zero.
+- **DNp04 and DNp02 carry it; DNp09 is silent.** That reproduces what ommatid
+  measured on a robot across 210 trials, from an independent code path.
+- **Two of the three controls are unusable at this scale.** Relabelling and
+  sign-scrambling push the network into saturation -- ~880,000 spikes against
+  13,324 -- so their rates mean nothing. Only the rewired control is
+  interpretable. A control that preserves E/I balance per neuron is needed.
+
 ## Quick start
 
 ```bash

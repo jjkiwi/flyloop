@@ -11,6 +11,15 @@ def _load(args) -> object:
     from .connectome.schema import Connectome
     from .connectome.synthetic import synthetic_connectome
 
+    if getattr(args, "data_root", None):
+        from .connectome.data_prep import load_dataset
+
+        return load_dataset(
+            args.data_root,
+            args.dataset,
+            min_synapses=args.min_synapses,
+            sign_source=args.sign_source,
+        )
     if args.connectome:
         return Connectome.load(args.connectome)
     return synthetic_connectome(seed=args.seed)
@@ -80,6 +89,31 @@ def cmd_baseline(args) -> int:
     return 0
 
 
+def cmd_activation(args) -> int:
+    from .experiments import activation_with_controls
+
+    c = _load(args)
+    print(c)
+    cmp = activation_with_controls(
+        c,
+        drive=args.drive,
+        side=args.side,
+        rate_hz=args.rate,
+        duration=args.duration,
+        control_seed=args.seed,
+        progress=args.verbose,
+    )
+    print()
+    print(cmp.report(top=args.top))
+    for note in cmp.results["original"].notes:
+        print(f"  note: {note}")
+    if args.out:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        cmp.table.to_csv(args.out)
+        print(f"  wrote {args.out}")
+    return 0
+
+
 def cmd_controls(args) -> int:
     from .experiments import looming_with_controls
 
@@ -98,9 +132,9 @@ def cmd_controls(args) -> int:
 def cmd_columns(args) -> int:
     from .vision.columns import load_columnar_table
 
-    t = load_columnar_table(args.dataset)
+    t = load_columnar_table(args.table)
     types = [c for c in t.columns if c not in ("hex1", "hex2", "x", "y")]
-    print(f"{args.dataset}: {len(t)} hexagonal columns, {len(types)} cell types")
+    print(f"{args.table}: {len(t)} hexagonal columns, {len(types)} cell types")
     print(f"  cell types: {', '.join(types)}")
     print(
         "\nThese are the published columnar tables that give a real retinotopy.\n"
@@ -151,6 +185,16 @@ def cmd_selftest(args) -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="flyloop", description=__doc__)
     ap.add_argument("--connectome", help="directory written by Connectome.save()")
+    ap.add_argument(
+        "--data-root",
+        help="clone of YijieYin/connectome_data_prep, to load a real connectome",
+    )
+    ap.add_argument("--dataset", default="malecns", help="dataset name under --data-root")
+    ap.add_argument("--min-synapses", type=int, default=5)
+    ap.add_argument(
+        "--sign-source", default="flyloop", choices=("flyloop", "dataset"),
+        help="whose neurotransmitter signs to use; they differ on ~5%% of neurons",
+    )
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("-v", "--verbose", action="store_true")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -174,6 +218,17 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(func=cmd_looming)
 
     p = sub.add_parser(
+        "activation", help="drive a population and read the descending neurons"
+    )
+    p.add_argument("--drive", default="LC4", help="cell type to stimulate")
+    p.add_argument("--side", default="L", choices=("L", "R", "both"))
+    p.add_argument("--rate", type=float, default=50.0, help="Poisson drive rate, Hz")
+    p.add_argument("--duration", type=float, default=0.2)
+    p.add_argument("--top", type=int, default=10)
+    p.add_argument("--out", help="write the comparison table CSV here")
+    p.set_defaults(func=cmd_activation)
+
+    p = sub.add_parser(
         "controls", help="looming experiment vs shuffled/relabelled control graphs"
     )
     p.add_argument("--trials", type=int, default=5)
@@ -181,7 +236,9 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(func=cmd_controls)
 
     p = sub.add_parser("columns", help="describe a published columnar retinotopy table")
-    p.add_argument("--dataset", default="mcns_right", choices=("mcns_right", "fafb_right"))
+    p.add_argument(
+        "--table", default="mcns_right", choices=("mcns_right", "fafb_right")
+    )
     p.set_defaults(func=cmd_columns)
 
     p = sub.add_parser("loop", help="run the closed sensorimotor loop")
@@ -192,6 +249,8 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(func=cmd_loop)
 
     args = ap.parse_args(argv)
+    if getattr(args, "side", None) == "both":
+        args.side = None
     return args.func(args)
 
 

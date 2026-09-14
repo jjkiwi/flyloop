@@ -36,6 +36,62 @@ class ColumnMap:
         return len(self.indices) < 2
 
     @classmethod
+    def from_hex_metadata(
+        cls,
+        c: Connectome,
+        eye: CompoundEye,
+        *,
+        cell_type: str = "L1",
+        hex_columns: tuple[str, str] = ("hex1", "hex2"),
+    ) -> "ColumnMap":
+        """Build a binocular retinotopy from the connectome's own hex columns.
+
+        The prepared MaleCNS metadata carries ``assignedOlHex1``/``assignedOlHex2``
+        for 23,720 optic-lobe neurons, on **both** sides: 892 distinct columns for
+        the right eye and 875 for the left. That is strictly better than the
+        separate published columnar tables, which cover the right optic lobe only
+        and force :meth:`from_columnar_table` to return a monocular map.
+
+        Columns are ordered centre-outward in hex coordinates, so truncating to a
+        smaller eye crops the periphery instead of reshuffling the field, and the
+        same hex column means the same direction in both eyes.
+        """
+        if not set(hex_columns).issubset(c.neurons.columns):
+            raise KeyError(
+                f"connectome {c.name!r} has no {hex_columns} columns. This needs the "
+                "prepared metadata from connectome_data_prep; see docs/DATA.md."
+            )
+        h1, h2 = hex_columns
+        n = c.neurons
+        indices: dict[str, np.ndarray] = {}
+        for side in ("L", "R"):
+            m = (n["type"].astype(str) == cell_type) & n[h1].notna()
+            if "side" in n.columns:
+                m &= n["side"].astype(str).str.upper().str.startswith(side)
+            rows = np.flatnonzero(m.to_numpy())
+            if len(rows) == 0:
+                continue
+            a = n[h1].to_numpy(dtype=float)[rows]
+            b = n[h2].to_numpy(dtype=float)[rows]
+            order = np.argsort((a - a.mean()) ** 2 + (b - b.mean()) ** 2)
+            indices[side] = rows[order]
+
+        need = eye.n_columns
+        short = {s: len(v) for s, v in indices.items() if len(v) < need}
+        if short:
+            raise ValueError(
+                f"eye asks for {need} ommatidia per side but the connectome has "
+                f"{short} hex-assigned {cell_type} neurons. Reduce "
+                "CompoundEye(n_columns=...) to the smaller eye."
+            )
+        return cls(
+            {s: v[:need] for s, v in indices.items()},
+            assumptions=[]
+            if len(indices) == 2
+            else ["only one eye has hex-assigned neurons in this connectome"],
+        )
+
+    @classmethod
     def from_columnar_table(
         cls,
         c: Connectome,

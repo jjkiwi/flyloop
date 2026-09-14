@@ -141,3 +141,70 @@ Three things to know before relying on it:
 The extra is heavy for what it delivers -- `connectome-interpreter` pulls in
 torch and CUDA wheels for the sake of two small CSVs. If that becomes a problem,
 the tables are MIT-licensed and can be vendored with attribution.
+
+## The route that actually works from a restricted network
+
+`neuprint.janelia.org`, `male-cns.janelia.org`, `codex.flywire.ai`, Zenodo and
+Hugging Face are all unreachable from some sandboxes. GitHub usually is not.
+
+[`YijieYin/connectome_data_prep`](https://github.com/YijieYin/connectome_data_prep)
+publishes the major fly connectomes already reduced to a `scipy.sparse` matrix
+plus a metadata CSV — MaleCNS, FAFB/FlyWire, BANC, hemibrain, MANC and the
+larva — and it is a plain git clone:
+
+```bash
+GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 \
+    https://github.com/YijieYin/connectome_data_prep ~/connectome_data_prep   # 3.7 GB
+flyloop --data-root ~/connectome_data_prep info
+```
+
+```python
+from flyloop.connectome.data_prep import load_dataset
+c = load_dataset("~/connectome_data_prep", "malecns", min_synapses=5)
+```
+
+MaleCNS loads in about six seconds: 161,429 neurons, 5,988,538 connections and
+86,516,520 synapses at `min_synapses=5`.
+
+### Three things to check on this data
+
+**Matrix orientation is `(pre, post)`, and it is verifiable.** The columns of
+`inprop` sum to 1.0 for 99.8% of neurons, because that file normalises by the
+*recipient's* total input. It matches `Connectome.W` with no transpose. Check it
+rather than assuming it, for any dataset.
+
+**The signs disagree with ours on 5% of neurons.** The datasets apply one rule:
+glutamate and GABA inhibitory, everything else excitatory. This project treats
+histamine as inhibitory — it gates a chloride channel in the fly visual system
+exactly as glutamate does — and gives neuromodulators no fast sign at all.
+
+| transmitter | flyloop | dataset | neurons |
+|---|---:|---:|---:|
+| histamine | −1 | +1 | 4,937 |
+| unclear | 0 | +1 | 2,464 |
+| dopamine | 0 | +1 | 392 |
+| octopamine | 0 | +1 | 101 |
+| serotonin | 0 | +1 | 48 |
+
+The histamine row is all the photoreceptors, so this choice lands directly on
+vision. `sign_report()` prints the table and `--sign-source dataset` switches
+to theirs. Decide it; do not inherit it.
+
+**`min_synapses` is a real filter.** At 5, a quarter of the connections survive
+but 72% of the synapses do. Most edges are one or two synapses.
+
+### Retinotopy comes free with this metadata
+
+The prepared MaleCNS metadata carries `assignedOlHex1`/`assignedOlHex2` for
+23,720 optic-lobe neurons on **both** sides — 892 distinct columns for the right
+eye, 875 for the left. That is better than the published columnar tables, which
+are right-eye only:
+
+```python
+from flyloop.vision import ColumnMap, CompoundEye
+m = ColumnMap.from_hex_metadata(c, CompoundEye(721), cell_type="L1")
+assert not m.monocular
+```
+
+Use `from_hex_metadata` when the connectome has the hex columns, and fall back
+to `from_columnar_table` when it does not.
