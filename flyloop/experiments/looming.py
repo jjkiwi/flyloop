@@ -96,10 +96,27 @@ def looming_experiment(
                     "trial": trial,
                     "escaped": escaped,
                     "latency": latency,
-                    "peak_dnp09": float(
-                        max(log["dn_DNp09_L"].max(), log["dn_DNp09_R"].max())
+                    "peak_escape": float(
+                        max(
+                            max(
+                                log.get(f"dn_{n}_L", pd.Series([0.0])).max(),
+                                log.get(f"dn_{n}_R", pd.Series([0.0])).max(),
+                            )
+                            for n in ("DNp01", "GF", "DNp02", "DNp04", "DNp09")
+                        )
                     ),
-                    "peak_gf": float(max(log["dn_GF_L"].max(), log["dn_GF_R"].max())),
+                    **{
+                        f"peak_{name}": float(
+                            max(
+                                log.get(f"dn_{name}_L", pd.Series([0.0])).max(),
+                                log.get(f"dn_{name}_R", pd.Series([0.0])).max(),
+                            )
+                        )
+                        for name in ("DNp01", "DNp02", "DNp04", "DNp09")
+                    },
+                    "escape_source": log["escape_source"].dropna().iloc[0]
+                    if log["escape_source"].notna().any()
+                    else None,
                     "spikes": int(res.spike_counts.sum()),
                 }
             )
@@ -132,4 +149,131 @@ def looming_experiment(
         median_latency=float(lat.median()) if len(lat) else None,
         passed=passed,
         notes=notes,
+    )
+
+
+@dataclass
+class ControlComparison:
+    """The looming experiment run on the real graph and on control graphs.
+
+    Two different questions are being asked, and conflating them is how a
+    connectome demo ends up claiming more than it measured:
+
+    * :func:`looming_experiment` asks whether the response is **stimulus
+      selective** -- looming versus a static and a receding object.
+    * this comparison asks whether it is **wiring dependent** -- the real graph
+      versus graphs with the same degrees, the same topology, or the same
+      transmitter counts.
+
+    The primary statistic here is the *peak firing rate of the escape
+    populations*, not the fraction of trials that escaped. Binary escape rate
+    saturates: on the synthetic fixture every graph except the rewired one
+    escapes in 100% of looming trials, so the rate cannot tell them apart even
+    though their latencies differ by a factor of three. A continuous statistic
+    also matches what a real experiment reports -- ommatid compared a change in
+    Hz, not a hit count.
+    """
+
+    results: dict[str, LoomingResult]
+    table: pd.DataFrame
+    wiring_dependent: bool
+    ratio: float
+    primary: str = "peak_escape"
+
+    def _loom(self, graph: str) -> pd.DataFrame:
+        t = self.results[graph].trials
+        return t[t["condition"] == "looming"]
+
+    def report(self) -> str:
+        lines = [
+            "looming experiment vs control graphs",
+            "  primary statistic: peak escape-population rate on looming trials",
+            "",
+            f"  {'graph':18s} {'peak Hz':>9s} {'latency s':>10s} {'escape':>7s}  carried by",
+        ]
+        for graph in self.results:
+            loom = self._loom(graph)
+            peak = float(loom[self.primary].median())
+            lat = loom["latency"].median()
+            rate = float(loom["escaped"].mean())
+            src = loom["escape_source"].dropna()
+            carried = ", ".join(sorted(src.unique())) if len(src) else "-"
+            lat_s = "-" if pd.isna(lat) else f"{lat:.2f}"
+            lines.append(
+                f"  {graph:18s} {peak:9.1f} {lat_s:>10s} {rate:6.0%}  {carried}"
+            )
+        lines += [
+            "",
+            f"  real / best control on {self.primary}: {self.ratio:.2f}x",
+            f"  VERDICT: {'wiring-dependent' if self.wiring_dependent else 'NOT established'}",
+        ]
+        if not self.wiring_dependent:
+            lines.append(
+                "  The controls do as well as the real graph on the primary "
+                "statistic. Whatever the loop is doing, the measured "
+                "connectivity is not what makes it happen."
+            )
+        return "\n".join(lines)
+
+
+def looming_with_controls(
+    connectome: Connectome,
+    *,
+    n_trials: int = 5,
+    seed: int = 0,
+    controls: tuple[str, ...] = ("rewired", "relabelled", "signs_scrambled"),
+    min_ratio: float = 1.5,
+    progress: bool = False,
+    **kwargs,
+) -> ControlComparison:
+    """Run the looming experiment on the real graph and on each control graph.
+
+    This is the experiment that licenses a claim. A looming response on the real
+    wiring means nothing on its own: a shuffle of the same graph will also
+    produce escape-like activity, because looming is simply the strongest visual
+    input. What the real wiring has to add is *where that input lands*.
+
+    ``min_ratio`` is how many times larger the real graph's escape response must
+    be than the best control's. The default of 1.5 is deliberately blunt; with
+    enough trials, report a permutation test on the underlying rates rather than
+    leaning on a threshold.
+    """
+    from ..connectome.controls import CONTROLS
+
+    graphs: dict[str, Connectome] = {"original": connectome}
+    for key in controls:
+        if key not in CONTROLS:
+            raise KeyError(f"unknown control {key!r}; available: {sorted(CONTROLS)}")
+        graphs[key] = CONTROLS[key](connectome, seed=seed)
+
+    results: dict[str, LoomingResult] = {}
+    rows = []
+    for name, graph in graphs.items():
+        if progress:  # pragma: no cover
+            print(f"== {name} ==", flush=True)
+        res = looming_experiment(graph, n_trials=n_trials, progress=progress, **kwargs)
+        results[name] = res
+        loom = res.trials[res.trials["condition"] == "looming"]
+        rows.append(
+            {
+                "graph": name,
+                "peak_escape": float(loom["peak_escape"].median()),
+                "median_latency": res.median_latency,
+                **{f"escape_{k}": v for k, v in res.escape_rate.items()},
+                "total_spikes": int(res.trials["spikes"].sum()),
+            }
+        )
+
+    table = pd.DataFrame(rows).set_index("graph")
+    real = float(table.loc["original", "peak_escape"])
+    controls_peak = [
+        float(table.loc[g, "peak_escape"]) for g in graphs if g != "original"
+    ]
+    best = max(controls_peak, default=0.0)
+    ratio = real / best if best > 0 else float("inf") if real > 0 else 0.0
+    return ControlComparison(
+        results=results,
+        table=table,
+        wiring_dependent=bool(results["original"].passed and ratio >= min_ratio),
+        ratio=ratio,
     )

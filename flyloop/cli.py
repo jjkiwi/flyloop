@@ -80,6 +80,35 @@ def cmd_baseline(args) -> int:
     return 0
 
 
+def cmd_controls(args) -> int:
+    from .experiments import looming_with_controls
+
+    c = _load(args)
+    cmp = looming_with_controls(
+        c, n_trials=args.trials, seed=args.seed, progress=args.verbose
+    )
+    print(cmp.report())
+    if args.out:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        cmp.table.to_csv(args.out)
+        print(f"  wrote {args.out}")
+    return 0 if cmp.wiring_dependent else 1
+
+
+def cmd_columns(args) -> int:
+    from .vision.columns import load_columnar_table
+
+    t = load_columnar_table(args.dataset)
+    types = [c for c in t.columns if c not in ("hex1", "hex2", "x", "y")]
+    print(f"{args.dataset}: {len(t)} hexagonal columns, {len(types)} cell types")
+    print(f"  cell types: {', '.join(types)}")
+    print(
+        "\nThese are the published columnar tables that give a real retinotopy.\n"
+        "The right optic lobe only -- there is no left-eye table."
+    )
+    return 0
+
+
 def cmd_loop(args) -> int:
     from .body import KinematicBody, cluttered_arena, looming_arena
     from .loop import ClosedLoop
@@ -107,7 +136,7 @@ def cmd_selftest(args) -> int:
     c = synthetic_connectome()
     print(c.report())
     print(f"\nsynapses to threshold: {synapses_to_threshold(LIFParams()):.0f}")
-    for t in ("LC4", "GF", "DNp09", "DNa01", "DNa02", "MDN"):
+    for t in ("LC4", "DNp01", "DNp02", "DNp04", "DNp09", "DNa01", "DNa02", "MDN"):
         n = len(c.population(t))
         print(f"  {t:6s} {n:3d} neurons {'ok' if n else 'MISSING'}")
         ok &= n > 0
@@ -143,6 +172,17 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--trials", type=int, default=5)
     p.add_argument("--out", help="write per-trial CSV here")
     p.set_defaults(func=cmd_looming)
+
+    p = sub.add_parser(
+        "controls", help="looming experiment vs shuffled/relabelled control graphs"
+    )
+    p.add_argument("--trials", type=int, default=5)
+    p.add_argument("--out", help="write the comparison table CSV here")
+    p.set_defaults(func=cmd_controls)
+
+    p = sub.add_parser("columns", help="describe a published columnar retinotopy table")
+    p.add_argument("--dataset", default="mcns_right", choices=("mcns_right", "fafb_right"))
+    p.set_defaults(func=cmd_columns)
 
     p = sub.add_parser("loop", help="run the closed sensorimotor loop")
     p.add_argument("--duration", type=float, default=3.0)

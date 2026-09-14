@@ -22,8 +22,79 @@ from .ommatidia import CompoundEye
 class ColumnMap:
     """Maps each ommatidium of each eye to the neuron it drives."""
 
-    def __init__(self, indices: dict[str, np.ndarray]):
+    def __init__(
+        self, indices: dict[str, np.ndarray], *, assumptions: list[str] | None = None
+    ):
         self.indices = indices
+        #: Anything about this mapping that was assumed rather than measured.
+        #: Report it alongside any result that depends on the mapping.
+        self.assumptions = assumptions or []
+
+    @property
+    def monocular(self) -> bool:
+        """True when only one eye could be mapped from the available data."""
+        return len(self.indices) < 2
+
+    @classmethod
+    def from_columnar_table(
+        cls,
+        c: Connectome,
+        eye: CompoundEye,
+        *,
+        dataset: str = "mcns_right",
+        cell_type: str = "L1",
+        table=None,
+        mirror: bool = False,
+    ) -> "ColumnMap":
+        """Build a *real* retinotopy from a published columnar table.
+
+        This is the mapping :meth:`from_connectome` refuses to guess. The tables
+        bundled with connectome-interpreter give, for each hexagonal column of
+        the optic lobe, the body ID of that column's L1, L2, Mi1 and so on, so
+        ommatidium *k* can be tied to the neuron that actually sits there.
+
+        **The published tables cover the right optic lobe only.** There is no
+        left-eye table, and the left eye's column identities cannot be derived
+        from the right one. So by default this returns a *monocular* map, and a
+        loop built on it sees with one eye. That is a real limitation of the
+        data, not an oversight to code around.
+
+        ``mirror=True`` assigns the left eye by taking the same cell type on the
+        left side of the connectome in the same rank order as the right. That is
+        an assumption about developmental symmetry, not a measurement: it will
+        be roughly right near the midline and progressively wrong toward the
+        periphery. Anything that depends on precise binocular geometry must not
+        use it. It is recorded in ``self.assumptions`` so a result can say so.
+        """
+        from .columns import columnar_indices, load_columnar_table
+
+        table = load_columnar_table(dataset) if table is None else table
+        need = eye.eyes["R"].n
+        right = columnar_indices(table, c.neurons["id"], cell_type=cell_type)
+        if len(right) < need:
+            raise ValueError(
+                f"the {dataset!r} table matched only {len(right)} {cell_type} "
+                f"neurons in connectome {c.name!r}, but the eye has {need} "
+                "ommatidia. Reduce CompoundEye(n_columns=...) or check that the "
+                "connectome and the table come from the same dataset."
+            )
+        indices = {"R": right[:need]}
+        assumptions: list[str] = []
+        if mirror:
+            m = c.neurons["type"].astype(str) == cell_type
+            if "side" in c.neurons.columns:
+                m &= c.neurons["side"].astype(str).str.upper().str.startswith("L")
+            left = np.flatnonzero(m.to_numpy())
+            if len(left) < need:
+                raise ValueError(
+                    f"mirror=True needs {need} left-side {cell_type} neurons; "
+                    f"the connectome has {len(left)}."
+                )
+            indices["L"] = left[:need]
+            assumptions.append(
+                "left eye mirrored from the right by rank order; not measured"
+            )
+        return cls(indices, assumptions=assumptions)
 
     @classmethod
     def from_connectome(
