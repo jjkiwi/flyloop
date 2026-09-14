@@ -1,10 +1,14 @@
 from .baselines import ReactiveBaseline, run_baseline
-from .looming import CONDITIONS, LoomingResult, looming_experiment
+from .looming import (
+    CONDITIONS,
+    ControlComparison,
+    LoomingResult,
+    looming_experiment,
+    looming_with_controls,
+)
 
 __all__ = [
-    "CONDITIONS",
-    "LoomingResult",
-    "ReactiveBaseline",
-    "looming_experiment",
-    "run_baseline",
+    "ReactiveBaseline", "run_baseline",
+    "CONDITIONS", "ControlComparison", "LoomingResult",
+    "looming_experiment", "looming_with_controls",
 ]

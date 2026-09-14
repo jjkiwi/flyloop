@@ -18,7 +18,7 @@ def test_readout_warns_when_descending_neurons_are_absent():
         sp.csr_matrix((1, 1)),
         name="empty",
     )
-    with pytest.warns(UserWarning, match="DNa01"):
+    with pytest.warns(UserWarning, match="no neurons for these roles"):
         DescendingReadout(c)
 
 
@@ -35,6 +35,23 @@ def test_looming_on_one_side_turns_away_from_it():
         turns[side] = ro.command().turn
     assert turns["L"] > 0.5, "threat on the left should turn right"
     assert turns["R"] < -0.5, "threat on the right should turn left"
+
+
+def test_escape_reports_which_population_carried_it():
+    """Which descending neuron fires is a result, not something we assume.
+
+    ommatid measured DNp01 and DNp09 silent on real wiring, with DNp02/DNp04
+    carrying the looming signal, so the readout must name its source.
+    """
+    c = synthetic_connectome()
+    b = LIFBrain(c, seed=4)
+    ro = DescendingReadout(c)
+    b.drive.set(eye_columns(c)["L"], 200.0)
+    for _ in range(3000):
+        ro.update(b.step(), b.p.dt)
+    cmd = ro.command()
+    assert cmd.escape
+    assert cmd.escape_source in ("DNp01", "GF", "DNp02", "DNp04", "DNp09")
 
 
 def test_giant_fibre_latches_escape():

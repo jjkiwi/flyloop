@@ -52,7 +52,6 @@ def synthetic_connectome(
 
     cols: dict[str, list[int]] = {}
     lc4: dict[str, list[int]] = {}
-    gf: dict[str, list[int]] = {}
     dn: dict[tuple[str, str], list[int]] = {}
     mn: dict[str, list[int]] = {}
     ttm: dict[str, list[int]] = {}
@@ -66,9 +65,9 @@ def synthetic_connectome(
         cols[side] = add("PR", "acetylcholine", side, "sensory", n_columns)
         # Loom-sensitive visual projection neurons.
         lc4[side] = add("LC4", "acetylcholine", side, "optic", n_lc4_per_side)
-        # The giant fibre: one enormous cell per side driving escape.
-        gf[side] = add("GF", "acetylcholine", side, "descending")
-        for name in ("DNp09", "DNa01", "DNa02", "MDN"):
+        # Descending neurons. DNp01 is the giant fibre; DNp02 and DNp04 are
+        # the other direct LC4 targets.
+        for name in ("DNp01", "DNp02", "DNp04", "DNp09", "DNa01", "DNa02", "MDN"):
             dn[(name, side)] = add(name, "acetylcholine", side, "descending")
         # Leg motor neurons: 3 joints x 3 legs per side, matching a hexapod.
         mn[side] = add("LegMN", "acetylcholine", side, "motor", 9)
@@ -96,16 +95,22 @@ def synthetic_connectome(
             idx = [(start + o) % n_columns for o in range(patch)]
             connect([cols[side][i] for i in idx], [cell], w=20)
 
-        # Escape pathway.  Two parallel branches, as in the real animal: the
-        # giant fibre drives the jump motor neuron directly and very strongly
-        # (a one-shot alarm, not a gentle integrator), while DNp09 is a
-        # separate descending neuron recruited by the same visual population.
-        # The giant fibre weight is set above synapses_to_threshold() so that a
-        # single GF spike fires TTMn -- that is the point of the giant fibre.
-        connect(lc4[side], gf[side], w=12)
-        connect(gf[side], ttm[side], w=220)
+        # Escape pathway, wired the way the animal is: LC4 projects in
+        # parallel onto several descending neurons rather than through a single
+        # chain.  DNp01 (the giant fibre) drives the jump motor neuron so
+        # strongly that one spike suffices -- its weight is set above
+        # synapses_to_threshold(), which is the point of a giant fibre.  DNp02
+        # and DNp04 are the other direct LC4 targets, and are the populations
+        # ommatid measured carrying the looming signal on real wiring while
+        # DNp01 and DNp09 stayed silent.  The fixture keeps all four so an
+        # experiment can report which one fires instead of assuming it.
+        connect(lc4[side], dn[("DNp01", side)], w=12)
+        connect(dn[("DNp01", side)], ttm[side], w=220)
+        connect(lc4[side], dn[("DNp02", side)], w=45)
+        connect(lc4[side], dn[("DNp04", side)], w=60)
         connect(lc4[side], dn[("DNp09", side)], w=10)
         connect(dn[("DNp09", side)], ttm[side], w=30)
+        connect(dn[("DNp04", side)], mn[side], w=50)
 
         # Steering: looming on one side drives a turn away from it.  The
         # weight is per-LC4; steering is a population vote, so no single visual

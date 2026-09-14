@@ -96,3 +96,48 @@ FlyGym returns per-ommatidium intensities directly, already in the fly's
 retinotopic coordinates. Use `FlyGymBody.ommatidia()`, not `observe()` through
 `CompoundEye` -- resampling them a second time scrambles the retinotopy you just
 got for free.
+
+## Retinotopy, solved
+
+The section above said retinotopy is the part that bites. It is, but the data
+exists and someone has already packaged it.
+
+`connectome-interpreter` (MIT) bundles two published columnar tables:
+
+| dataset | source | columns | gives you |
+|---|---|---|---|
+| `mcns_right` | Nern et al. 2024 | **892** | body ID of each column's L1, L2, L3, L5, Mi1, Mi4, Mi9, C2, C3, Tm1, Tm2, Tm4, Tm9, Tm20, T1 in MaleCNS |
+| `fafb_right` | Matsliah et al. 2024 | 796 | the same for the right optic lobe of FlyWire |
+
+```bash
+pip install 'flyloop[data]'
+flyloop columns --dataset mcns_right
+```
+
+```python
+from flyloop.vision import ColumnMap, CompoundEye
+m = ColumnMap.from_columnar_table(connectome, CompoundEye(892), cell_type="L1")
+```
+
+892 is also the number of retinotopic columns the ommatid robot samples its
+camera onto, which is a good sign this is the table everyone doing this ends up
+using.
+
+Three things to know before relying on it:
+
+1. **Right optic lobe only.** There is no left-eye table, and the left eye's
+   column identities cannot be derived from the right one. `ColumnMap` therefore
+   returns a *monocular* map by default. `mirror=True` fills the left eye by
+   rank order on the assumption of developmental symmetry; it is recorded in
+   `map.assumptions` so a result can declare it. Do not use it for anything that
+   depends on binocular geometry.
+2. **The file has 920 rows for 892 columns.** Twenty-eight columns are listed
+   twice as exact duplicates. They are collapsed on load; left in, two ommatidia
+   would share an input neuron.
+3. **Pick the input cell type deliberately.** L1 and L2 are the large monopolar
+   cells carrying the ON and OFF pathways out of the lamina. L1 is the closest a
+   connectome-only model gets to "light lands here".
+
+The extra is heavy for what it delivers -- `connectome-interpreter` pulls in
+torch and CUDA wheels for the sake of two small CSVs. If that becomes a problem,
+the tables are MIT-licensed and can be vendored with attribution.

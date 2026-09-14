@@ -16,13 +16,23 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Real connectome downloads. Needs network access to neuprint.janelia.org.
-data = ["neuprint-python>=0.4", "pyarrow>=14"]
+# Connectome access and the published columnar (retinotopy) tables.
+# connectome-interpreter bundles the Nern 2024 and Matsliah 2024 hex-column
+# tables; it pulls in torch, so this extra is heavy for the size of the data.
+data = ["connectome-interpreter>=2.9", "neuprint-python>=0.4", "pyarrow>=14"]
 # GPU brain backend.
 gpu = ["torch>=2.1"]
-# Biomechanical body (stage 4). Pulls in MuJoCo.
-body = ["flygym>=1.0", "mujoco>=3.0"]
+# Biomechanical body (stage 4). NOTE: flygym 2.x requires Python >= 3.12.
+body = ["flygym>=2.1", "mujoco>=3.9"]
+# Connectome-constrained optic lobe. NOTE: flyvis requires Python < 3.13.
+vision = ["flyvis>=1.2"]
 dev = ["pytest>=7", "pyarrow>=14"]
+
+# Python version window, because the two upstream models disagree:
+#   flygym >= 2.1  needs Python >= 3.12
+#   flyvis 1.2     needs Python <  3.13
+# so a full install (body + vision) must run on Python 3.12 exactly. The core
+# package and everything tested in CI works from 3.10 up.
 
 [project.scripts]
 flyloop = "flyloop.cli:main"

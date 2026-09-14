@@ -40,7 +40,9 @@ nie dostrajamy odczytu aż robot zacznie chodzić.
 - [x] próbkowanie panoramy equirectangular
 - [x] adaptacja czasowa (statyczna scena wygasa)
 - [x] `ColumnMap`, który krzyczy zamiast zmyślać retinotopię
+- [x] **prawdziwa retinotopia** z tabel Nern 2024 / Matsliah 2024 (892 kolumny)
 - [ ] podpiąć `flyvis` jako model płata wzrokowego zamiast naszego high-passa
+- [ ] lewe oko: tabele pokrywają tylko prawy płat, `mirror=True` to założenie
 
 ### Etap 3 - odczyt ruchowy (ZROBIONE)
 
@@ -53,7 +55,8 @@ nie dostrajamy odczytu aż robot zacznie chodzić.
 ### Etap 4 - ciało (W TOKU)
 
 - [x] zastępnik kinematyczny + protokół `Body`
-- [x] adapter NeuroMechFly v2 / FlyGym
+- [x] adapter NeuroMechFly v2 pod **API FlyGym 2.x** (stare 1.x jest martwe)
+- [ ] **nieuruchomiony** - wymaga Pythona 3.12 i MuJoCo, tu jest 3.11
 - [ ] zainstalować MuJoCo i przejść pętlę w realnym ciele
 - [ ] porównać: te same DN, dwa ciała - co przeżywa transfer
 
@@ -66,11 +69,25 @@ nie dostrajamy odczytu aż robot zacznie chodzić.
 
 ### Etap 6 - eksperymenty
 
-- [x] test looming z kontrolami (statyczny, oddalający się)
+- [x] test looming z kontrolami bodźcowymi (statyczny, oddalający się)
 - [x] baseline nie-konektomowy
-- [ ] ablacje: wyciąć DNp09, zmierzyć czy ucieczka znika
+- [x] **grafy kontrolne**: przetasowane okablowanie, przenumerowane neurony,
+      przetasowane znaki - `flyloop controls`
+- [ ] ablacje: wyciąć DNp04/DNp02, zmierzyć czy ucieczka znika
 - [ ] zmiana pola widzenia, opóźnienie propriocepcji
 - [ ] krzywa czułości na `w_syn`
+
+## Czego używamy cudzego
+
+| warstwa | pakiet | licencja |
+|---|---|---|
+| retinotopia (892 kolumny) | connectome-interpreter | MIT |
+| ciało + siatka ommatidiów | flygym 2.x | - |
+| płat wzrokowy | flyvis | MIT |
+| metodologia | ommatid | MIT |
+
+Okno wersji: flygym wymaga Pythona >= 3.12, flyvis < 3.13. Pełna instalacja
+musi iść na **3.12**.
 
 ## Co już wiemy, a nie wiedzieliśmy na starcie
 
@@ -79,9 +96,15 @@ nie dostrajamy odczytu aż robot zacznie chodzić.
 2. **Sumacja czasowa zmienia próg.** Połączenie o połowie tej siły i tak odpala
    cel przy 100 Hz. Jest na to test.
 3. **Baseline wygrywa na czas reakcji.** 10 linijek arytmetyki ucieka po 0,13 s,
-   model konektomowy po 2,32 s. Ale baseline prawdopodobnie fałszywie alarmuje
+   model konektomowy po 0,68 s. Ale baseline prawdopodobnie fałszywie alarmuje
    na sam widok obiektu. To jest pierwsze realne pytanie badawcze projektu:
    czy różnica to lepsza selektywność, czy tylko wolniejszy obwód?
+4. **Binarny wskaźnik ucieczki niczego nie różnicuje.** Trzy z czterech grafów
+   uciekają w 100% prób. Dopiero szczytowa częstotliwość wyładowań rozdziela je
+   3,16-krotnie. Kontrole znalazły błąd w naszym własnym eksperymencie.
+5. **DNp09 i włókno olbrzymie mogą milczeć.** Na realnych danych ommatid zmierzył
+   je na 0 Hz; sygnał nieśli DNp04 i DNp02. Nasz odczyt raportuje teraz, która
+   populacja odpaliła, zamiast tego zakładać.
 
 ## Trzy pułapki
 

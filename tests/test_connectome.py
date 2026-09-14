@@ -52,7 +52,7 @@ def test_population_lookup_and_require():
 
 def test_subset_preserves_internal_edges():
     c = synthetic_connectome()
-    idx = np.concatenate([c.population("GF"), c.population("TTMn")])
+    idx = np.concatenate([c.population("DNp01"), c.population("TTMn")])
     sub = c.subset(idx)
     assert sub.n == len(idx)
     assert sub.n_connections > 0

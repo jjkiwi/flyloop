@@ -106,6 +106,7 @@ class ClosedLoop:
 
         self.body.step(self.command)
         row = dict(self.command.as_dict())
+        row["escape_source"] = self.command.escape_source
         row.update(self.body.state())
         row["spikes"] = spikes_this_step
         row.update({f"dn_{k}": v for k, v in self.readout.rates.items()})
