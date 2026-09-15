@@ -177,6 +177,38 @@ def cmd_approach(args) -> int:
     return 0
 
 
+def cmd_embodied(args) -> int:
+    from .connectome.controls import rewire_degree_preserving
+    from .experiments.embodied import embodied_experiment
+
+    c = _load(args)
+    print(c)
+    print(
+        "\nEach row is a mirror pair from one body seed: the same fly walks once at a\n"
+        "target on its right and once at its mirror image on the left. NeuroMechFly\n"
+        "drifts tens of degrees on its own, so only the difference means anything.\n"
+    )
+    graphs = {"real": c}
+    if args.control:
+        graphs["rewired"] = rewire_degree_preserving(c, seed=args.seed)
+    for label, g in graphs.items():
+        table = embodied_experiment(
+            g, seeds=tuple(range(args.seeds)), bearing_deg=args.bearing, steps=args.steps
+        )
+        print(
+            f"  {label:8s} fixation {table.fixation_deg.mean():+7.2f} deg "
+            f"(sd {table.fixation_deg.std():.2f}), "
+            f"commanded turn {table.commanded_turn.mean():+.4f}"
+        )
+        if args.out:
+            path = Path(args.out)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path = path.with_name(f"{path.stem}_{label}{path.suffix or '.csv'}")
+            table.to_csv(path, index=False)
+            print(f"    wrote {path}")
+    return 0
+
+
 def cmd_controls(args) -> int:
     from .experiments import looming_with_controls
 
@@ -315,6 +347,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--no-dopamine", action="store_true")
     p.add_argument("--out", help="write the per-step log CSV here")
     p.set_defaults(func=cmd_approach)
+
+    p = sub.add_parser("embodied", help="drive NeuroMechFly with the same descending readout")
+    p.add_argument("--steps", type=int, default=30, help="control steps per episode")
+    p.add_argument("--seeds", type=int, default=3, help="body seeds, two episodes each")
+    p.add_argument("--bearing", type=float, default=35.0, help="target bearing, degrees")
+    p.add_argument("--control", action="store_true", help="also run a rewired graph")
+    p.add_argument("--out", help="write per-graph CSVs based on this path")
+    p.set_defaults(func=cmd_embodied)
 
     p = sub.add_parser(
         "controls", help="looming experiment vs shuffled/relabelled control graphs"

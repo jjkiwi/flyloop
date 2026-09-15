@@ -11,6 +11,13 @@ __all__ = [
 ]
 
 
+def neuromechfly_body(**kwargs):
+    """Construct a :class:`NeuroMechFlyBody`, importing MuJoCo only when asked."""
+    from .nmf_body import NeuroMechFlyBody
+
+    return NeuroMechFlyBody(**kwargs)
+
+
 def flygym_body(**kwargs):
     """Construct a :class:`FlyGymBody`, importing MuJoCo only when asked to."""
     from .flygym_body import FlyGymBody

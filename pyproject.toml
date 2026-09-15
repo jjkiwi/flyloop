@@ -42,6 +42,11 @@ include = ["flyloop*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+  # Tests that run the MuJoCo physics body. Tens of seconds each, because a
+  # tripod gait needs a few hundred milliseconds of walking to say anything.
+  "slow: runs the physics simulator",
+]
 
 [tool.ruff]
 line-length = 96

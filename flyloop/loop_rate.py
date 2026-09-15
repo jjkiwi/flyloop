@@ -87,6 +87,7 @@ class RateLoop:
         reward_scale: float = 0.8,
         learning_rate: float = 0.05,
         view: HexWorldView | None = None,
+        body=None,
     ):
         self.c = connectome
         self.target = target or Target()
@@ -119,7 +120,10 @@ class RateLoop:
             self.record.update(
                 population_index(connectome, ("DNa02", "DNa01", "LC4"), side=side)
             )
-        self.body = KinematicBody(
+        # Any body exposing reset(), step(command) and state() with x, y and
+        # theta will do. The default is the kinematic stub; pass a
+        # NeuroMechFlyBody to put the same readout in a physics simulation.
+        self.body = body or KinematicBody(
             Arena([self.target.as_pillar()]), dt=dt, speed=speed, turn_rate=turn_rate
         )
         self.reset()
