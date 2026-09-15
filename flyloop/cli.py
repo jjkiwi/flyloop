@@ -144,6 +144,39 @@ def cmd_sweep(args) -> int:
     return 0
 
 
+def cmd_approach(args) -> int:
+    from .loop_rate import RateLoop, Target, approach_score
+
+    c = _load(args)
+    print(c)
+    target = Target(x=args.target_x, y=args.target_y, radius=args.target_radius)
+    loop = RateLoop(
+        c,
+        target=target,
+        hops=args.hops,
+        dopamine=not args.no_dopamine,
+        speed=args.speed,
+        learning_rate=args.learning_rate,
+    )
+    print(
+        f"  {loop.plastic.n_synapses:,} KC->MBON synapses under plasticity, "
+        f"{len(loop.pam)} PAM neurons carry the reward"
+    )
+    log = loop.run(args.steps, progress=args.verbose)
+    score = approach_score(log, radius=target.radius)
+    print(
+        f"\n  distance {score['start']:.3f} -> {score['final']:.3f} "
+        f"({score['closed_fraction']:.1%} closed) in {score['steps']} steps"
+    )
+    print(f"  mean |bearing| {score['mean_abs_bearing']:.1f} deg, reached={score['reached']}")
+    print(f"  KC->MBON depression {log['dopamine_depression'].iloc[-1]:.5f}")
+    if args.out:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        log.to_csv(args.out, index=False)
+        print(f"  wrote {args.out}")
+    return 0
+
+
 def cmd_controls(args) -> int:
     from .experiments import looming_with_controls
 
@@ -270,6 +303,18 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--control", action="store_true", help="also sweep a rewired graph")
     p.add_argument("--out", help="write per-graph CSVs based on this path")
     p.set_defaults(func=cmd_sweep)
+
+    p = sub.add_parser("approach", help="fly at a target, with dopamine that grows nearer")
+    p.add_argument("--steps", type=int, default=45)
+    p.add_argument("--hops", type=int, default=5)
+    p.add_argument("--speed", type=float, default=1.2)
+    p.add_argument("--target-x", type=float, default=1.4)
+    p.add_argument("--target-y", type=float, default=0.6)
+    p.add_argument("--target-radius", type=float, default=0.15)
+    p.add_argument("--learning-rate", type=float, default=0.05)
+    p.add_argument("--no-dopamine", action="store_true")
+    p.add_argument("--out", help="write the per-step log CSV here")
+    p.set_defaults(func=cmd_approach)
 
     p = sub.add_parser(
         "controls", help="looming experiment vs shuffled/relabelled control graphs"

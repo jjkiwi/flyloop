@@ -541,3 +541,108 @@ than an unexplained failure.
 - For motion and the optomotor hypothesis, a model with real temporal dynamics
   is required — the LIF has that but cannot conduct, and this one conducts but
   has no time. Neither alone is enough.
+
+---
+
+## Run 6 — flying at a target, with dopamine that grows as it closes
+
+**Date** 2026-09-15
+**Data, model** MaleCNS v1.0, input-proportion weights, rate model as Run 5.
+**Protocol** A dark target at (1.4, 0.6) with the fly starting at the origin
+facing +x, so it begins 23 degrees off-axis. Each control step renders the
+target onto the fly's own hex columns, runs the network to steady state over 5
+synaptic hops, takes turn as ``DNa02_R - DNa02_L``, and moves the body. 45
+steps. Reward is delivered to the **PAM cluster** -- the fly's own 316
+reward-signalling dopaminergic neurons -- scaled by closeness, and depresses its
+own KC->MBON synapses (61,210 of them) wherever dopamine and Kenyon-cell
+activity coincide.
+
+```bash
+flyloop --data-root <clone> approach --steps 45
+```
+
+### It flies at the target, and the fixation is wiring-specific
+
+| condition | final distance | closed | mean \|bearing\| | KC→MBON depression |
+|---|---:|---:|---:|---:|
+| original, dopamine lr 0.5 | 0.379 | 75.1% | **10.78°** | 0.0119 |
+| original, dopamine lr 0.05 | 0.379 | 75.1% | **10.78°** | 0.0013 |
+| original, no dopamine | 0.379 | 75.1% | **10.78°** | 0.0000 |
+| rewired, dopamine lr 0.5 | 0.655 | 57.0% | **39.48°** | 0.1378 |
+| rewired, dopamine lr 0.05 | 0.655 | 57.0% | 39.48° | 0.0175 |
+| rewired, no dopamine | 0.655 | 57.0% | 39.48° | 0.0000 |
+
+Bearing falls from 23 degrees toward 6 and stays there: the animal turns to face
+the target and holds it there. That is object fixation, and it is the real
+behaviour this circuit is known for.
+
+**Mean |bearing| is the number that discriminates, not distance closed.** The
+rewired control still closes 57% of the distance because the loop has a baseline
+forward drive — it simply walks. What it cannot do is aim: 39.5 degrees of
+mean bearing error against the real graph's 10.8.
+
+### Dopamine works, and changes nothing here
+
+The plasticity is real and measurable. Depression scales with the learning rate
+exactly as it should (0.0119 at lr 0.5, 0.0013 at lr 0.05, exactly 0.0000 with
+dopamine off), so the fly's own KC->MBON synapses are being depressed by its own
+PAM neurons in proportion to how close the target is.
+
+**And the trajectory is identical to five decimal places whether dopamine is on
+or off.** Not similar — identical.
+
+The graph said why before the simulation confirmed it, which is the order these
+questions should be asked in:
+
+- **MBONs supply about 1% of DNa02's input.** Summed over all 97 mushroom body
+  output neurons onto both DNa02 cells: 0.0104 of input proportion. The
+  connection exists and is monosynaptic; it is just negligible.
+- **Kenyon cells barely respond to vision.** During the visual task their mean
+  peak activation is 0.0023, with 235 of 4,064 above 0.01. The learning rule is
+  a coincidence detector between dopamine and KC activity, and there is almost
+  no KC activity to coincide with.
+
+**The mushroom body is an olfactory learning centre, and it is not in the visual
+steering loop.** Reward-modulated plasticity at the fly's real plasticity site
+cannot change visual fixation, because visual fixation does not route through
+that site. That is a statement about the animal, not a limitation of the code.
+
+A curiosity worth noting: the rewired control shows *more* depression (0.138 vs
+0.012), because random rewiring feeds the Kenyon cells input they do not
+normally get, so there is more coincidence to detect. Plasticity is more active
+on the scrambled brain than the real one.
+
+### Caveats
+
+- **Reward shaping is not biology.** Scaling reward continuously with distance
+  is a reinforcement-learning convenience; real PAM neurons signal reward
+  delivery and prediction error, not a distance gradient.
+- Nothing is fitted: learning rate, gains and the forward-speed floor are all
+  set by hand.
+- One target position, one starting pose, no repeats. The bearing difference is
+  large and consistent across six runs, but this is a demonstration rather than
+  a measurement with error bars.
+- The loop is quasi-static, as Run 5 requires: each step assumes the network
+  settles. Fine for approaching an object, useless for motion direction.
+
+### Two bugs found on the way, both recorded because both were silent
+
+**A sign convention that turned the fly away from the target.** Bearing was
+computed counter-clockwise-positive while the eye projection put the right eye
+at positive azimuth and the body turned right on a positive command. The animal
+steered smoothly and confidently in the wrong direction. Fixed by defining
+bearing positive-to-the-right once, and pinned by three tests.
+
+**Plasticity that edited the wrong synapses.** Entry positions were computed
+from the COO matrix *before* `coalesce()`, which sorts entries — so the learning
+rule rewrote unrelated parts of the connectome and reported a depression of
+-9.21. It looked like a number. A test now builds the tensor the way the model
+does, coalescing included, and checks the located weights are the right ones.
+
+### Next
+
+- Pair reward with an **olfactory** stimulus, where the mushroom body actually
+  is the substrate. That is where dopamine-gated KC->MBON plasticity should
+  change behaviour, and the same machinery is already in place.
+- Repeat the approach from several starting bearings with seeds, to turn the
+  fixation result into a measurement.

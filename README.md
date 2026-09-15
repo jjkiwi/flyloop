@@ -103,6 +103,33 @@ Three things to read off that table, in `docs/RESULTS.md` with the caveats:
   13,324 -- so their rates mean nothing. Only the rewired control is
   interpretable. A control that preserves E/I balance per neuron is needed.
 
+## It flies at a target
+
+```bash
+flyloop --data-root ~/connectome_data_prep approach --steps 45
+```
+
+Starting 23 degrees off-axis, the fly turns to face a dark target and holds it
+there — object fixation, the behaviour this circuit is known for. Reward reaches
+the brain through the fly's own PAM cluster (316 dopaminergic neurons), scaled
+by closeness, and depresses its own KC→MBON synapses.
+
+| condition | closed | mean \|bearing\| | KC→MBON depression |
+|---|---:|---:|---:|
+| original, dopamine | 75.1% | **10.8°** | 0.0119 |
+| original, no dopamine | 75.1% | **10.8°** | 0.0000 |
+| rewired control | 57.0% | **39.5°** | 0.1378 |
+
+Two things to read off that, both in `docs/RESULTS.md`:
+
+- **Fixation needs the measured wiring.** The control still walks forward, so it
+  closes distance; what it cannot do is aim.
+- **Dopamine changes the weights and not the behaviour** — identical to five
+  decimal places. The graph said why first: MBONs supply ~1% of DNa02's input,
+  and Kenyon cells barely respond to vision. The mushroom body is an olfactory
+  learning centre and is not in the visual steering loop. That is a fact about
+  the animal, not a limitation of the code.
+
 ## Quick start
 
 ```bash

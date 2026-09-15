@@ -141,6 +141,19 @@ class RateBrain:
             slope_dict=slope_by_type or None,
         )
 
+    @property
+    def values(self):
+        """The network's coalesced weight values, editable in place."""
+        return self.net.all_weights.values()
+
+    def plasticity(self, **kwargs):
+        """Attach dopamine-gated KC->MBON plasticity to this network."""
+        from .dopamine import mushroom_body_plasticity
+
+        return mushroom_body_plasticity(
+            self.c, self.values, self.net.all_weights.indices(), **kwargs
+        )
+
     def run(
         self, inputs: np.ndarray, *, record: dict[str, np.ndarray] | None = None
     ) -> RateResult:
