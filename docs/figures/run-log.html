@@ -1,0 +1,496 @@
+<title>Flyloop Run Log</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root{
+  --page:#eaeeeb; --surface:#f7f8f7; --surface-2:#eff2f0;
+  --ink:#131714; --ink-2:#4d5551; --ink-3:#7c8480;
+  --rule:#d3dad6; --rule-soft:#e2e7e4;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+  --ctrl:#8b938e; --flag:#b04a2e;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  --serif:"IBM Plex Serif",Georgia,serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --page:#0d100e; --surface:#141715; --surface-2:#1b1f1c;
+  --ink:#f2f5f3; --ink-2:#b3bcb7; --ink-3:#7f8a85;
+  --rule:#2b312d; --rule-soft:#222723;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  --ctrl:#79837d; --flag:#e08163;
+}}
+:root[data-theme="dark"]{
+  --page:#0d100e; --surface:#141715; --surface-2:#1b1f1c;
+  --ink:#f2f5f3; --ink-2:#b3bcb7; --ink-3:#7f8a85;
+  --rule:#2b312d; --rule-soft:#222723;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  --ctrl:#79837d; --flag:#e08163;
+}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.55;margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding-block:40px 64px;padding-left:20px;padding-right:20px}
+h1{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,44px);
+  line-height:1.1;margin:0 0 12px;text-wrap:balance;letter-spacing:-.015em}
+.thesis{font-size:clamp(16px,2.2vw,19px);color:var(--ink-2);max-width:62ch;margin:0 0 28px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-3);margin:0 0 6px}
+.vitals{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--rule);
+  border-radius:3px;background:var(--surface);overflow:hidden}
+.vital{flex:1 1 150px;padding:14px 16px;border-right:1px solid var(--rule-soft)}
+.vital:last-child{border-right:0}
+.vital b{display:block;font-family:var(--mono);font-size:19px;font-weight:600;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.vital span{font-size:12px;color:var(--ink-3)}
+.panels{display:grid;gap:22px;margin-top:34px}
+@media(min-width:840px){.panels{grid-template-columns:1fr 1fr}}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:3px;
+  padding:20px;display:flex;flex-direction:column;gap:12px}
+.panel.wide{grid-column:1/-1}
+.panel h2{font-family:var(--serif);font-size:19px;font-weight:600;margin:0;
+  line-height:1.25;text-wrap:balance}
+.panel p{margin:0;font-size:14px;color:var(--ink-2);max-width:62ch}
+.fig{width:100%}
+svg{display:block;width:100%;height:auto;overflow:visible}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-family:var(--mono);font-size:11.5px;
+  color:var(--ink-2);align-items:center}
+.key{display:inline-flex;align-items:center;gap:6px}
+.sw{width:13px;height:3px;border-radius:2px;display:inline-block}
+.sw.dash{background:transparent;border-top:2px dashed var(--ctrl);height:0}
+.sw.dot{width:9px;height:9px;border-radius:50%}
+.note{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);
+  border-left:2px solid var(--rule);padding-left:10px;margin:0}
+.note b{color:var(--flag);font-weight:600}
+details{font-size:13px}
+summary{font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-3);cursor:pointer;
+  padding:3px 0;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▸ ";color:var(--ink-3)}
+details[open] summary::before{content:"▾ "}
+summary:focus-visible{outline:2px solid var(--s1);outline-offset:2px}
+.tw{overflow-x:auto;margin-top:8px}
+table{border-collapse:collapse;font-family:var(--mono);font-size:11.5px;
+  font-variant-numeric:tabular-nums;width:100%}
+th,td{text-align:right;padding:3px 9px;border-bottom:1px solid var(--rule-soft);
+  white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--ink-3);font-weight:500}
+.tip{position:fixed;pointer-events:none;opacity:0;transition:opacity .1s;
+  background:var(--ink);color:var(--page);font-family:var(--mono);font-size:11px;
+  padding:5px 8px;border-radius:3px;z-index:9;white-space:pre;line-height:1.45}
+.foot{margin-top:40px;padding-top:18px;border-top:1px solid var(--rule);
+  font-size:12.5px;color:var(--ink-3);max-width:70ch}
+.foot a{color:var(--ink-2)}
+.hit{cursor:crosshair}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">MaleCNS v1.0 · nine runs · flyloop</p>
+  <h1>Flyloop Run Log</h1>
+  <p class="thesis">Nine experiments driving the complete connectome of a male fruit fly,
+    and the three separate places the wiring diagram turned out to be necessary
+    and not sufficient. Every panel carries its control.</p>
+
+  <div class="vitals">
+    <div class="vital"><b id="v-neurons">—</b><span>neurons</span></div>
+    <div class="vital"><b id="v-conn">—</b><span>connections, ≥5 synapses</span></div>
+    <div class="vital"><b id="v-syn">—</b><span>synapses</span></div>
+    <div class="vital"><b id="v-types">—</b><span>cell types</span></div>
+  </div>
+
+  <div class="panels">
+
+    <div class="panel wide">
+      <p class="eyebrow">Run 2 · drive-strength sweep</p>
+      <h2>DNp09 never fires — at any drive, across a fortyfold range</h2>
+      <p>Poisson drive onto the looming-sensitive LC4 population, six seeds per point.
+        Three descending neurons recruit in a fixed order; a fourth stays at exactly zero
+        everywhere. On a degree-preserving rewire all four stay at zero.</p>
+      <div class="fig" id="f-sweep"></div>
+      <div class="legend" id="l-sweep"></div>
+      <p class="note">Open circles mark drive rates whose seed-to-seed spread exceeded 2×
+        — <b>excluded from the recruitment thresholds</b>. At 5 Hz the spread is 8.2×.</p>
+      <details><summary>Data</summary><div class="tw" id="t-sweep"></div></details>
+    </div>
+
+    <div class="panel">
+      <p class="eyebrow">Run 3 · structure predicts function</p>
+      <h2>Share of excitation, not synapse count</h2>
+      <p>LC4 makes 3,782 synapses onto DNp01 and only 2,279 onto DNp02 — yet DNp02
+        recruits first. What orders them is the fraction of each target's <em>total</em>
+        excitation that LC4 supplies.</p>
+      <div class="fig" id="f-share"></div>
+      <p class="note">DNp09 receives <b>exactly zero</b> synapses from LC4. The graph
+        answered in one query what the sweep spent six seeds on.</p>
+      <details><summary>Data</summary><div class="tw" id="t-share"></div></details>
+    </div>
+
+    <div class="panel">
+      <p class="eyebrow">Run 4 · the visual pathway</p>
+      <h2>Every stage is below threshold</h2>
+      <p>Median synapses per connected pair along the columnar route to LC4. One spike
+        needs about 162 synapses to fire a resting neuron in this model, so the chain
+        attenuates at every step and a looming stimulus never arrives.</p>
+      <div class="fig" id="f-chain"></div>
+      <p class="note">T4a → LC4 is <b>not a weak connection</b>. There is no connection.</p>
+      <details><summary>Data</summary><div class="tw" id="t-chain"></div></details>
+    </div>
+
+    <div class="panel">
+      <p class="eyebrow">Run 7 · object fixation</p>
+      <h2>The real wiring aims; the control turns away</h2>
+      <p>A dark target, the fly started off-axis, thirty control steps. On the measured
+        graph the final bearing converges toward the target from every start. The rewired
+        control diverges at large bearings — it does not merely aim worse.</p>
+      <div class="fig" id="f-fix"></div>
+      <div class="legend" id="l-fix"></div>
+      <details><summary>Data</summary><div class="tw" id="t-fix"></div></details>
+    </div>
+
+    <div class="panel">
+      <p class="eyebrow">Run 7 · Kenyon cell calibration</p>
+      <h2>The sparse odour code has to be imposed</h2>
+      <p>About 5% of Kenyon cells respond to a given odour in the animal, and that
+        sparseness is what makes odours separable. At the model's default gain one
+        glomerulus lights 88% of them.</p>
+      <div class="fig" id="f-sparse"></div>
+      <div class="legend" id="l-sparse"></div>
+      <p class="note">The usable window is narrow: a factor of three either way gives a
+        <b>dense code or a dead one</b>.</p>
+      <details><summary>Data</summary><div class="tw" id="t-sparse"></div></details>
+    </div>
+
+    <div class="panel">
+      <p class="eyebrow">Run 8 · why learning stops</p>
+      <h2>The MBONs that learn are not the ones that steer</h2>
+      <p>Per mushroom body output neuron: the Kenyon cell input it receives, where
+        dopamine-gated plasticity acts, against its output onto descending neurons,
+        the only cells that move the animal.</p>
+      <div class="fig" id="f-mbon"></div>
+      <p class="note">Correlation <b id="rval">—</b>. MBON14 has the most Kenyon cell
+        input and exactly zero descending output.</p>
+      <details><summary>Data</summary><div class="tw" id="t-mbon"></div></details>
+    </div>
+
+    <div class="panel">
+      <p class="eyebrow">Run 9 · the ensemble readout</p>
+      <h2>A balance sees what an average cannot</h2>
+      <p>Reward-specific change in the mushroom body's output after odour conditioning,
+        as percentage points of relative change. Averaging 97 cells of opposite sign
+        hides it; weighting each by its influence on the motor output does not.</p>
+      <div class="fig" id="f-read"></div>
+      <div class="legend" id="l-read"></div>
+      <p class="note">Odour B shows <b>4.4× more</b> reward-specific signal in the balance.
+        It remains small: 1.7 points of an 8.3% total change.</p>
+      <details><summary>Data</summary><div class="tw" id="t-read"></div></details>
+    </div>
+
+  </div>
+
+  <p class="foot">Data: MaleCNS v1.0 (HHMI Janelia FlyEM, Cambridge Connectomics Group and
+    Google Research, CC-BY), prepared release from YijieYin/connectome_data_prep.
+    Model after Shiu et al., <em>Nature</em> 2024. Full run log with every caveat in
+    <span style="font-family:var(--mono)">docs/RESULTS.md</span>.
+    Nothing on this page is fitted to measured firing rates.</p>
+</div>
+<div class="tip" id="tip"></div>
+
+<script id="figdata" type="application/json">{"graph": {"neurons": 161429, "connections": 5988538, "synapses": 86516520.0, "cell_types": 11751}, "mbon": [{"type": "MBON14", "kc_input": 3.5397, "dn_output": 0.0}, {"type": "MBON09", "kc_input": 3.5302, "dn_output": 0.0044}, {"type": "MBON07", "kc_input": 3.3883, "dn_output": 0.0001}, {"type": "MBON12", "kc_input": 3.244, "dn_output": 0.001}, {"type": "MBON10", "kc_input": 2.6268, "dn_output": 0.0003}, {"type": "MBON15-like", "kc_input": 2.3528, "dn_output": 0.0}, {"type": "MBON19", "kc_input": 2.1175, "dn_output": 0.0}, {"type": "MBON22", "kc_input": 1.8463, "dn_output": 0.0}, {"type": "MBON11", "kc_input": 1.7685, "dn_output": 0.0048}, {"type": "MBON02", "kc_input": 1.7416, "dn_output": 0.0006}, {"type": "MBON15", "kc_input": 1.6957, "dn_output": 0.0018}, {"type": "MBON01", "kc_input": 1.6798, "dn_output": 0.0086}, {"type": "MBON05", "kc_input": 1.6636, "dn_output": 0.0}, {"type": "MBON18", "kc_input": 1.6366, "dn_output": 0.0}, {"type": "MBON06", "kc_input": 1.5953, "dn_output": 0.0005}, {"type": "MBON03", "kc_input": 1.5816, "dn_output": 0.0}, {"type": "MBON13", "kc_input": 1.5802, "dn_output": 0.0}, {"type": "MBON16", "kc_input": 1.5373, "dn_output": 0.0}, {"type": "MBON17", "kc_input": 1.505, "dn_output": 0.0004}, {"type": "MBON17-like", "kc_input": 1.4451, "dn_output": 0.0}, {"type": "MBON23", "kc_input": 1.4169, "dn_output": 0.0}, {"type": "MBON21", "kc_input": 1.3425, "dn_output": 0.0237}, {"type": "MBON25-like", "kc_input": 1.3363, "dn_output": 0.0226}, {"type": "MBON30", "kc_input": 1.2508, "dn_output": 0.0116}, {"type": "MBON29", "kc_input": 1.0876, "dn_output": 0.0088}, {"type": "MBON25", "kc_input": 1.0183, "dn_output": 0.0171}, {"type": "MBON27", "kc_input": 0.98, "dn_output": 0.0287}, {"type": "MBON24", "kc_input": 0.9645, "dn_output": 0.0}, {"type": "MBON31", "kc_input": 0.8122, "dn_output": 0.0378}, {"type": "MBON28", "kc_input": 0.8007, "dn_output": 0.0001}, {"type": "MBON20", "kc_input": 0.7715, "dn_output": 0.104}, {"type": "MBON32", "kc_input": 0.7346, "dn_output": 0.0529}, {"type": "MBON04", "kc_input": 0.6587, "dn_output": 0.0007}, {"type": "MBON26", "kc_input": 0.4248, "dn_output": 0.029}, {"type": "MBON33", "kc_input": 0.3182, "dn_output": 0.362}, {"type": "MBON35", "kc_input": 0.1879, "dn_output": 0.1018}, {"type": "MBON34", "kc_input": 0.1156, "dn_output": 0.0327}], "mbon_r": -0.416, "share": {"DNp04": 0.73, "DNp02": 0.456, "DNp01": 0.29, "DNp09": 0.0}, "direct": {"DNp04": 6811.0, "DNp02": 2279.0, "DNp01": 3782.0, "DNp09": 0.0}, "sweep": {"drive": [5, 10, 15, 20, 30, 50, 75, 100, 150, 200], "DNp04": [67.5, 145, 177.5, 215, 262.5, 315, 350, 365, 385, 395], "DNp02": [17.5, 57.5, 80, 115, 157.5, 212.5, 257.5, 285, 317.5, 335], "DNp01": [7.5, 10, 15, 40, 85, 195, 277.5, 315, 352.5, 365], "DNp09": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "noisy": [5, 10, 30, 100]}, "chain": [{"edge": "L2 \u2192 Tm1", "syn": 129}, {"edge": "L2 \u2192 Tm2", "syn": 128}, {"edge": "L1 \u2192 Mi1", "syn": 85}, {"edge": "Tm2 \u2192 T5a", "syn": 13}, {"edge": "Tm1 \u2192 T5a", "syn": 9}, {"edge": "Tm2 \u2192 LC4", "syn": 7}, {"edge": "T5a \u2192 LC4", "syn": 5}, {"edge": "T4a \u2192 LC4", "syn": 0}], "threshold": 162, "fixation": {"start": [-40, -20, 0, 20, 40], "original": [-12.23, -7.47, -4.74, -1.76, 2.53], "rewired": [-56.28, -6.74, 5.88, 28.82, 29.39]}, "sparse": {"slope": [0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.75, 0.9, 1.0], "sparseness": [1.6, 4.5, 10.7, 18.0, 27.0, 44.2, 64.9, 76.5, 81.6], "overlap": [4.5, 6.1, 15.5, 19.8, 26.8, 43.9, 67.2, 82.0, 87.4]}, "readout": {"mean": {"A": -1.581, "B": -0.092}, "balance": {"A": -1.7, "B": -0.409}}}</script>
+<script>
+(function(){
+const D = JSON.parse(document.getElementById('figdata').textContent);
+const tip = document.getElementById('tip');
+const fmt = n => n.toLocaleString('en-US');
+document.getElementById('v-neurons').textContent = fmt(D.graph.neurons);
+document.getElementById('v-conn').textContent = fmt(D.graph.connections);
+document.getElementById('v-syn').textContent = (D.graph.synapses/1e6).toFixed(1)+'M';
+document.getElementById('v-types').textContent = fmt(D.graph.cell_types);
+document.getElementById('rval').textContent = 'r = ' + D.mbon_r;
+
+const NS='http://www.w3.org/2000/svg';
+function el(t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;}
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function showTip(ev,txt){tip.textContent=txt;tip.style.opacity=1;
+  const r=tip.getBoundingClientRect();
+  tip.style.left=Math.min(ev.clientX+12,innerWidth-r.width-8)+'px';
+  tip.style.top=Math.max(ev.clientY-r.height-10,6)+'px';}
+function hideTip(){tip.style.opacity=0;}
+function hit(node,txt){node.classList.add('hit');
+  node.addEventListener('pointerenter',e=>showTip(e,txt));
+  node.addEventListener('pointermove',e=>showTip(e,txt));
+  node.addEventListener('pointerleave',hideTip);}
+
+function frame(host,W,H,M){
+  const s=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img'});
+  host.innerHTML=''; host.appendChild(s);
+  return {s,W,H,M,iw:W-M.l-M.r,ih:H-M.t-M.b};
+}
+function axis(g,{xt,yt,xlab,ylab,fmtY}){
+  const {s,M,iw,ih}=g, ink3='var(--ink-3)', rule='var(--rule-soft)';
+  yt.forEach(v=>{
+    const y=M.t+ih-(v-g.y0)/(g.y1-g.y0)*ih;
+    s.appendChild(el('line',{x1:M.l,x2:M.l+iw,y1:y,y2:y,stroke:rule,'stroke-width':1}));
+    const t=el('text',{x:M.l-8,y:y+3.5,'text-anchor':'end',fill:ink3,
+      'font-family':'var(--mono)','font-size':10.5});
+    t.textContent=(fmtY?fmtY(v):v); s.appendChild(t);
+  });
+  xt.forEach(o=>{
+    const t=el('text',{x:o.x,y:M.t+ih+16,'text-anchor':'middle',fill:ink3,
+      'font-family':'var(--mono)','font-size':10.5});
+    t.textContent=o.label; s.appendChild(t);
+  });
+  if(ylab){const t=el('text',{x:2,y:M.t-7,'text-anchor':'start',fill:ink3,
+    'font-family':'var(--mono)','font-size':10});t.textContent=ylab;s.appendChild(t);}
+  if(xlab){const t=el('text',{x:M.l+iw,y:M.t+ih+32,'text-anchor':'end',fill:ink3,
+    'font-family':'var(--mono)','font-size':10});t.textContent=xlab;s.appendChild(t);}
+}
+function legend(id,items){
+  const host=document.getElementById(id); if(!host)return;
+  host.innerHTML=items.map(i=>{
+    const sw = i.dash?'<span class="sw dash"></span>'
+      : `<span class="sw${i.dot?' dot':''}" style="background:${i.color}"></span>`;
+    return `<span class="key">${sw}${i.label}</span>`;}).join('');
+}
+function table(id,head,rows){
+  const host=document.getElementById(id); if(!host)return;
+  host.innerHTML='<table><thead><tr>'+head.map(h=>`<th>${h}</th>`).join('')+
+    '</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(c=>`<td>${c}</td>`).join('')+
+    '</tr>').join('')+'</tbody></table>';
+}
+
+/* ---- 1. recruitment sweep ---- */
+(function(){
+  const g=frame(document.getElementById('f-sweep'),640,260,{l:44,r:76,t:16,b:40});
+  g.y0=0; g.y1=400;
+  const X=D.sweep.drive, lx=v=>Math.log10(v);
+  const px=v=>g.M.l+(lx(v)-lx(5))/(lx(200)-lx(5))*g.iw;
+  const py=v=>g.M.t+g.ih-(v-g.y0)/(g.y1-g.y0)*g.ih;
+  axis(g,{yt:[0,100,200,300,400],xt:[5,10,20,50,100,200].map(v=>({x:px(v),label:v})),
+    xlab:'drive onto LC4 (Hz, log)',ylab:'Hz'});
+  const series=[['DNp04','--s1'],['DNp02','--s2'],['DNp01','--s3'],['DNp09','--s4']];
+  series.forEach(([name,tok])=>{
+    const col=`var(${tok})`;
+    const d=X.map((x,i)=>`${i?'L':'M'}${px(x).toFixed(1)} ${py(D.sweep[name][i]).toFixed(1)}`).join(' ');
+    g.s.appendChild(el('path',{d,fill:'none',stroke:col,'stroke-width':2,
+      'stroke-linejoin':'round','stroke-linecap':'round'}));
+    X.forEach((x,i)=>{
+      const v=D.sweep[name][i], noisy=D.sweep.noisy.includes(x);
+      const c=el('circle',{cx:px(x),cy:py(v),r:noisy?4:3.4,
+        fill:noisy?'var(--surface)':col,stroke:col,'stroke-width':noisy?2:1.5});
+      hit(c,`${name}  ${v} Hz\ndrive ${x} Hz`+(noisy?'\nseed spread > 2x':''));
+      g.s.appendChild(c);
+    });
+    const last=D.sweep[name][X.length-1];
+    const t=el('text',{x:px(200)+9,y:py(last)+3.5,fill:col,
+      'font-family':'var(--mono)','font-size':11,'font-weight':600});
+    t.textContent=name; g.s.appendChild(t);
+  });
+  legend('l-sweep',series.map(([n,t])=>({label:n,color:`var(${t})`}))
+    .concat([{label:'seed spread > 2×',color:'var(--ink-3)',dot:true}]));
+  table('t-sweep',['drive Hz'].concat(series.map(s=>s[0])),
+    X.map((x,i)=>[x].concat(series.map(s=>D.sweep[s[0]][i]))));
+})();
+
+/* ---- 2. share of excitation ---- */
+(function(){
+  const rows=['DNp04','DNp02','DNp01','DNp09'];
+  const g=frame(document.getElementById('f-share'),460,200,{l:62,r:56,t:12,b:34});
+  const bw=26, gap=(g.ih-rows.length*bw)/(rows.length+1);
+  const px=v=>g.M.l+v*g.iw;
+  rows.forEach((r,i)=>{
+    const y=g.M.t+gap+i*(bw+gap), v=D.share[r], w=Math.max(px(v)-g.M.l,0);
+    const col=['--s1','--s2','--s3','--s4'][i];
+    const rect=el('rect',{x:g.M.l,y,width:Math.max(w,1.5),height:bw,rx:4,
+      fill:`var(${col})`});
+    hit(rect,`${r}\n${(v*100).toFixed(1)}% of its excitation from LC4\n${fmt(D.direct[r])} synapses`);
+    g.s.appendChild(rect);
+    const lab=el('text',{x:g.M.l-9,y:y+bw/2+4,'text-anchor':'end',fill:'var(--ink-2)',
+      'font-family':'var(--mono)','font-size':11.5}); lab.textContent=r;
+    g.s.appendChild(lab);
+    const val=el('text',{x:g.M.l+w+8,y:y+bw/2+4,fill:'var(--ink-2)',
+      'font-family':'var(--mono)','font-size':11.5,'font-weight':600});
+    val.textContent=(v*100).toFixed(1)+'%'; g.s.appendChild(val);
+  });
+  [0,0.25,0.5,0.75].forEach(v=>{
+    const x=px(v);
+    g.s.appendChild(el('line',{x1:x,x2:x,y1:g.M.t,y2:g.M.t+g.ih,
+      stroke:'var(--rule-soft)','stroke-width':1}));
+    const t=el('text',{x,y:g.M.t+g.ih+16,'text-anchor':'middle',fill:'var(--ink-3)',
+      'font-family':'var(--mono)','font-size':10.5});
+    t.textContent=(v*100)+'%'; g.s.appendChild(t);
+  });
+  const xl=el('text',{x:g.M.l+g.iw,y:g.M.t+g.ih+31,'text-anchor':'end',
+    fill:'var(--ink-3)','font-family':'var(--mono)','font-size':10});
+  xl.textContent="LC4's share of the target's excitation"; g.s.appendChild(xl);
+  table('t-share',['target','synapses from LC4','share of excitation'],
+    rows.map(r=>[r,fmt(D.direct[r]),(D.share[r]*100).toFixed(1)+'%']));
+})();
+
+/* ---- 3. pathway attenuation ---- */
+(function(){
+  const g=frame(document.getElementById('f-chain'),460,230,{l:86,r:40,t:14,b:38});
+  const max=180, px=v=>g.M.l+v/max*g.iw;
+  const bw=16, gap=(g.ih-D.chain.length*bw)/(D.chain.length+1);
+  D.chain.forEach((c,i)=>{
+    const y=g.M.t+gap+i*(bw+gap), w=px(c.syn)-g.M.l;
+    const rect=el('rect',{x:g.M.l,y,width:Math.max(w,1.5),height:bw,rx:4,
+      fill:c.syn>=D.threshold?'var(--s1)':'var(--s2)'});
+    hit(rect,`${c.edge}\n${c.syn} synapses per pair\n${c.syn>=D.threshold?'above':'below'} the ${D.threshold}-synapse threshold`);
+    g.s.appendChild(rect);
+    const lab=el('text',{x:g.M.l-9,y:y+bw/2+4,'text-anchor':'end',fill:'var(--ink-2)',
+      'font-family':'var(--mono)','font-size':11}); lab.textContent=c.edge;
+    g.s.appendChild(lab);
+    const val=el('text',{x:g.M.l+Math.max(w,1.5)+7,y:y+bw/2+4,fill:'var(--ink-3)',
+      'font-family':'var(--mono)','font-size':10.5}); val.textContent=c.syn;
+    g.s.appendChild(val);
+  });
+  const tx=px(D.threshold);
+  g.s.appendChild(el('line',{x1:tx,x2:tx,y1:g.M.t-2,y2:g.M.t+g.ih+2,
+    stroke:'var(--flag)','stroke-width':2,'stroke-dasharray':'5 4'}));
+  const tl=el('text',{x:tx,y:g.M.t+g.ih+17,'text-anchor':'middle',fill:'var(--flag)',
+    'font-family':'var(--mono)','font-size':10.5,'font-weight':600});
+  tl.textContent='162 = one spike'; g.s.appendChild(tl);
+  const xl=el('text',{x:g.M.l+g.iw,y:g.M.t+g.ih+32,'text-anchor':'end',
+    fill:'var(--ink-3)','font-family':'var(--mono)','font-size':10});
+  xl.textContent='median synapses per connected pair'; g.s.appendChild(xl);
+  table('t-chain',['connection','synapses/pair'],D.chain.map(c=>[c.edge,c.syn]));
+})();
+
+/* ---- 4. fixation ---- */
+(function(){
+  const g=frame(document.getElementById('f-fix'),460,258,{l:46,r:20,t:22,b:44});
+  g.y0=-60; g.y1=40;
+  const px=v=>g.M.l+(v+50)/100*g.iw;
+  const py=v=>g.M.t+g.ih-(v-g.y0)/(g.y1-g.y0)*g.ih;
+  axis(g,{yt:[-60,-40,-20,0,20,40],xt:D.fixation.start.map(v=>({x:px(v),label:v+'°'})),
+    xlab:'starting bearing',ylab:'final bearing (deg)'});
+  g.s.appendChild(el('line',{x1:g.M.l,x2:g.M.l+g.iw,y1:py(0),y2:py(0),
+    stroke:'var(--ink-3)','stroke-width':1.5,'stroke-dasharray':'2 3'}));
+  const zt=el('text',{x:g.M.l+g.iw-2,y:py(0)-6,'text-anchor':'end',fill:'var(--ink-3)',
+    'font-family':'var(--mono)','font-size':10}); zt.textContent='on target';
+  g.s.appendChild(zt);
+  [['rewired','var(--ctrl)',true],['original','var(--s1)',false]].forEach(([k,col,dash])=>{
+    const d=D.fixation.start.map((x,i)=>
+      `${i?'L':'M'}${px(x).toFixed(1)} ${py(D.fixation[k][i]).toFixed(1)}`).join(' ');
+    g.s.appendChild(el('path',Object.assign({d,fill:'none',stroke:col,'stroke-width':2,
+      'stroke-linejoin':'round'},dash?{'stroke-dasharray':'6 4'}:{})));
+    D.fixation.start.forEach((x,i)=>{
+      const v=D.fixation[k][i];
+      const c=el('circle',{cx:px(x),cy:py(v),r:4,fill:col,stroke:'var(--surface)','stroke-width':2});
+      hit(c,`${k}\nstart ${x}°  →  final ${v}°`); g.s.appendChild(c);
+    });
+  });
+  legend('l-fix',[{label:'measured wiring',color:'var(--s1)'},
+    {label:'degree-preserving rewire',dash:true}]);
+  table('t-fix',['start','original','rewired'],
+    D.fixation.start.map((x,i)=>[x+'°',D.fixation.original[i]+'°',D.fixation.rewired[i]+'°']));
+})();
+
+/* ---- 5. KC sparseness ---- */
+(function(){
+  const g=frame(document.getElementById('f-sparse'),460,250,{l:46,r:20,t:14,b:44});
+  g.y0=0; g.y1=100;
+  const S=D.sparse;
+  const px=v=>g.M.l+(v-0.30)/(1.00-0.30)*g.iw;
+  const py=v=>g.M.t+g.ih-(v-g.y0)/(g.y1-g.y0)*g.ih;
+  const band=el('rect',{x:g.M.l,y:py(8),width:g.iw,height:py(2)-py(8),
+    fill:'var(--s3)','fill-opacity':.14});
+  g.s.appendChild(band);
+  axis(g,{yt:[0,25,50,75,100],xt:[0.3,0.45,0.6,0.75,0.9].map(v=>({x:px(v),label:v})),
+    xlab:'Kenyon cell gain (tanh slope)',ylab:'%',fmtY:v=>v+'%'});
+  const bt=el('text',{x:g.M.l+g.iw-2,y:py(5)-7,'text-anchor':'end',fill:'var(--s3)',
+    'font-family':'var(--mono)','font-size':10,'font-weight':600});
+  bt.textContent='~5% in the animal'; g.s.appendChild(bt);
+  [['sparseness','var(--s1)','KCs responding'],['overlap','var(--s2)','shared by two odours']]
+    .forEach(([k,col,lab])=>{
+    const d=S.slope.map((x,i)=>`${i?'L':'M'}${px(x).toFixed(1)} ${py(S[k][i]).toFixed(1)}`).join(' ');
+    g.s.appendChild(el('path',{d,fill:'none',stroke:col,'stroke-width':2,'stroke-linejoin':'round'}));
+    S.slope.forEach((x,i)=>{
+      const c=el('circle',{cx:px(x),cy:py(S[k][i]),r:3.4,fill:col});
+      hit(c,`${lab}\nslope ${x}  →  ${S[k][i]}%`); g.s.appendChild(c);
+    });
+  });
+  const mx=px(0.35);
+  g.s.appendChild(el('line',{x1:mx,x2:mx,y1:g.M.t,y2:g.M.t+g.ih,
+    stroke:'var(--flag)','stroke-width':1.5,'stroke-dasharray':'4 4'}));
+  const ml=el('text',{x:mx+6,y:g.M.t+12,fill:'var(--flag)',
+    'font-family':'var(--mono)','font-size':10.5,'font-weight':600});
+  ml.textContent='0.35'; g.s.appendChild(ml);
+  legend('l-sparse',[{label:'KCs responding to an odour',color:'var(--s1)'},
+    {label:'shared by two odours',color:'var(--s2)'}]);
+  table('t-sparse',['slope','sparseness','overlap'],
+    S.slope.map((x,i)=>[x,S.sparseness[i]+'%',S.overlap[i]+'%']));
+})();
+
+/* ---- 6. MBON scatter ---- */
+(function(){
+  const g=frame(document.getElementById('f-mbon'),460,258,{l:52,r:24,t:22,b:44});
+  const px=v=>g.M.l+v/3.8*g.iw;
+  const py=v=>g.M.t+g.ih-v/0.40*g.ih;
+  g.y0=0; g.y1=0.40;
+  axis(g,{yt:[0,0.1,0.2,0.3,0.4],xt:[0,1,2,3].map(v=>({x:px(v),label:v})),
+    xlab:'Kenyon cell input  (where learning acts)',ylab:'output onto descending neurons',
+    fmtY:v=>v.toFixed(1)});
+  const named={MBON14:[-9,-9],MBON33:[9,4],MBON35:[9,4],MBON20:[9,4]};
+  D.mbon.forEach(m=>{
+    const learns=m.kc_input>1.5, drives=m.dn_output>0.05;
+    const col=drives?'var(--s2)':(learns?'var(--s1)':'var(--ink-3)');
+    const c=el('circle',{cx:px(m.kc_input),cy:py(m.dn_output),r:5,fill:col,
+      'fill-opacity':.85,stroke:'var(--surface)','stroke-width':1.5});
+    hit(c,`${m.type}\nKC input ${m.kc_input}\ndescending output ${m.dn_output}`);
+    g.s.appendChild(c);
+    const off=named[m.type];
+    if(off){
+      const t=el('text',{x:px(m.kc_input)+off[0],y:py(m.dn_output)+off[1],
+        'text-anchor':off[0]<0?'end':'start',fill:'var(--ink-2)',
+        'font-family':'var(--mono)','font-size':10.5});
+      t.textContent=m.type; g.s.appendChild(t);
+    }
+  });
+  const rows=[...D.mbon].sort((a,b)=>b.kc_input-a.kc_input).slice(0,10);
+  table('t-mbon',['MBON','KC input','descending output'],
+    rows.map(m=>[m.type,m.kc_input,m.dn_output]));
+})();
+
+/* ---- 7. readout comparison ---- */
+(function(){
+  const g=frame(document.getElementById('f-read'),460,215,{l:50,r:22,t:16,b:46});
+  const min=-2.0, px=v=>g.M.l+(v-min)/(0-min)*g.iw;
+  const groups=[['odour A','A'],['odour B','B']];
+  const bh=22, gh=bh*2+8, gap=(g.ih-groups.length*gh)/(groups.length+1);
+  groups.forEach(([lab,k],gi)=>{
+    const top=g.M.t+gap+gi*(gh+gap);
+    [['mean','var(--ctrl)','mean of 97 MBONs'],['balance','var(--s1)','valence-weighted balance']]
+      .forEach(([kind,col,full],bi)=>{
+      const v=D.readout[kind][k], y=top+bi*(bh+8);
+      const x0=px(v), x1=px(0);
+      const rect=el('rect',{x:x0,y,width:Math.max(x1-x0,1.5),height:bh,rx:4,fill:col});
+      hit(rect,`${full}\n${lab}: ${v} pp reward-specific`);
+      g.s.appendChild(rect);
+      const t=el('text',{x:x0-7,y:y+bh/2+4,'text-anchor':'end',fill:'var(--ink-2)',
+        'font-family':'var(--mono)','font-size':11,'font-weight':600});
+      t.textContent=v.toFixed(3); g.s.appendChild(t);
+    });
+    const l=el('text',{x:g.M.l+g.iw,y:top-4,'text-anchor':'end',fill:'var(--ink-3)',
+      'font-family':'var(--mono)','font-size':10.5}); l.textContent=lab;
+    g.s.appendChild(l);
+  });
+  [-2,-1.5,-1,-0.5,0].forEach(v=>{
+    const x=px(v);
+    g.s.appendChild(el('line',{x1:x,x2:x,y1:g.M.t,y2:g.M.t+g.ih,
+      stroke:v===0?'var(--rule)':'var(--rule-soft)','stroke-width':1}));
+    const t=el('text',{x,y:g.M.t+g.ih+16,'text-anchor':'middle',fill:'var(--ink-3)',
+      'font-family':'var(--mono)','font-size':10.5}); t.textContent=v;
+    g.s.appendChild(t);
+  });
+  const xl=el('text',{x:g.M.l+g.iw,y:g.M.t+g.ih+32,'text-anchor':'end',
+    fill:'var(--ink-3)','font-family':'var(--mono)','font-size':10});
+  xl.textContent='reward-specific change (percentage points)'; g.s.appendChild(xl);
+  legend('l-read',[{label:'mean of 97 MBONs',color:'var(--ctrl)'},
+    {label:'valence-weighted balance',color:'var(--s1)'}]);
+  table('t-read',['readout','odour A','odour B'],
+    [['mean of 97 MBONs',D.readout.mean.A,D.readout.mean.B],
+     ['valence-weighted balance',D.readout.balance.A,D.readout.balance.B]]);
+})();
+})();
+</script>

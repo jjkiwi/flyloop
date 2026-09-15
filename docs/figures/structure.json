@@ -1,0 +1,366 @@
+{
+ "graph": {
+  "neurons": 161429,
+  "connections": 5988538,
+  "synapses": 86516520.0,
+  "cell_types": 11751
+ },
+ "mbon_scatter": [
+  {
+   "type": "MBON14",
+   "kc_input": 3.5397,
+   "dn_output": 0.0
+  },
+  {
+   "type": "MBON09",
+   "kc_input": 3.5302,
+   "dn_output": 0.0044
+  },
+  {
+   "type": "MBON07",
+   "kc_input": 3.3883,
+   "dn_output": 0.0001
+  },
+  {
+   "type": "MBON12",
+   "kc_input": 3.244,
+   "dn_output": 0.001
+  },
+  {
+   "type": "MBON10",
+   "kc_input": 2.6268,
+   "dn_output": 0.0003
+  },
+  {
+   "type": "MBON15-like",
+   "kc_input": 2.3528,
+   "dn_output": 0.0
+  },
+  {
+   "type": "MBON19",
+   "kc_input": 2.1175,
+   "dn_output": 0.0
+  },
+  {
+   "type": "MBON22",
+   "kc_input": 1.8463,
+   "dn_output": 0.0
+  },
+  {
+   "type": "MBON11",
+   "kc_input": 1.7685,
+   "dn_output": 0.0048
+  },
+  {
+   "type": "MBON02",
+   "kc_input": 1.7416,
+   "dn_output": 0.0006
+  },
+  {
+   "type": "MBON15",
+   "kc_input": 1.6957,
+   "dn_output": 0.0018
+  },
+  {
+   "type": "MBON01",
+   "kc_input": 1.6798,
+   "dn_output": 0.0086
+  },
+  {
+   "type": "MBON05",
+   "kc_input": 1.6636,
+   "dn_output": 0.0
+  },
+  {
+   "type": "MBON18",
+   "kc_input": 1.6366,
+   "dn_output": 0.0
+  },
+  {
+   "type": "MBON06",
+   "kc_input": 1.5953,
+   "dn_output": 0.0005
+  },
+  {
+   "type": "MBON03",
+   "kc_input": 1.5816,
+   "dn_output": 0.0
+  },
+  {
+   "type": "MBON13",
+   "kc_input": 1.5802,
+   "dn_output": 0.0
+  },
+  {
+   "type": "MBON16",
+   "kc_input": 1.5373,
+   "dn_output": 0.0
+  },
+  {
+   "type": "MBON17",
+   "kc_input": 1.505,
+   "dn_output": 0.0004
+  },
+  {
+   "type": "MBON17-like",
+   "kc_input": 1.4451,
+   "dn_output": 0.0
+  },
+  {
+   "type": "MBON23",
+   "kc_input": 1.4169,
+   "dn_output": 0.0
+  },
+  {
+   "type": "MBON21",
+   "kc_input": 1.3425,
+   "dn_output": 0.0237
+  },
+  {
+   "type": "MBON25-like",
+   "kc_input": 1.3363,
+   "dn_output": 0.0226
+  },
+  {
+   "type": "MBON30",
+   "kc_input": 1.2508,
+   "dn_output": 0.0116
+  },
+  {
+   "type": "MBON29",
+   "kc_input": 1.0876,
+   "dn_output": 0.0088
+  },
+  {
+   "type": "MBON25",
+   "kc_input": 1.0183,
+   "dn_output": 0.0171
+  },
+  {
+   "type": "MBON27",
+   "kc_input": 0.98,
+   "dn_output": 0.0287
+  },
+  {
+   "type": "MBON24",
+   "kc_input": 0.9645,
+   "dn_output": 0.0
+  },
+  {
+   "type": "MBON31",
+   "kc_input": 0.8122,
+   "dn_output": 0.0378
+  },
+  {
+   "type": "MBON28",
+   "kc_input": 0.8007,
+   "dn_output": 0.0001
+  },
+  {
+   "type": "MBON20",
+   "kc_input": 0.7715,
+   "dn_output": 0.104
+  },
+  {
+   "type": "MBON32",
+   "kc_input": 0.7346,
+   "dn_output": 0.0529
+  },
+  {
+   "type": "MBON04",
+   "kc_input": 0.6587,
+   "dn_output": 0.0007
+  },
+  {
+   "type": "MBON26",
+   "kc_input": 0.4248,
+   "dn_output": 0.029
+  },
+  {
+   "type": "MBON33",
+   "kc_input": 0.3182,
+   "dn_output": 0.362
+  },
+  {
+   "type": "MBON35",
+   "kc_input": 0.1879,
+   "dn_output": 0.1018
+  },
+  {
+   "type": "MBON34",
+   "kc_input": 0.1156,
+   "dn_output": 0.0327
+  }
+ ],
+ "mbon_r": -0.416,
+ "valence": [
+  {
+   "type": "MBON32",
+   "valence": 0.00691
+  },
+  {
+   "type": "MBON30",
+   "valence": 0.0016
+  },
+  {
+   "type": "MBON35",
+   "valence": 0.00093
+  },
+  {
+   "type": "MBON31",
+   "valence": 0.00063
+  },
+  {
+   "type": "MBON20",
+   "valence": 0.00018
+  },
+  {
+   "type": "MBON33",
+   "valence": 0.00011
+  },
+  {
+   "type": "MBON12",
+   "valence": 7e-05
+  },
+  {
+   "type": "MBON01",
+   "valence": 6e-05
+  },
+  {
+   "type": "MBON34",
+   "valence": 6e-05
+  },
+  {
+   "type": "MBON09",
+   "valence": 2e-05
+  },
+  {
+   "type": "MBON22",
+   "valence": 1e-05
+  },
+  {
+   "type": "MBON28",
+   "valence": 1e-05
+  },
+  {
+   "type": "MBON11",
+   "valence": 1e-05
+  },
+  {
+   "type": "MBON02",
+   "valence": 0.0
+  },
+  {
+   "type": "MBON18",
+   "valence": 0.0
+  },
+  {
+   "type": "MBON15-like",
+   "valence": 0.0
+  },
+  {
+   "type": "MBON17",
+   "valence": -0.0
+  },
+  {
+   "type": "MBON17-like",
+   "valence": -0.0
+  },
+  {
+   "type": "MBON13",
+   "valence": -0.0
+  },
+  {
+   "type": "MBON16",
+   "valence": -0.0
+  },
+  {
+   "type": "MBON06",
+   "valence": -0.0
+  },
+  {
+   "type": "MBON10",
+   "valence": -1e-05
+  },
+  {
+   "type": "MBON25",
+   "valence": -1e-05
+  },
+  {
+   "type": "MBON25-like",
+   "valence": -3e-05
+  },
+  {
+   "type": "MBON03",
+   "valence": -7e-05
+  },
+  {
+   "type": "MBON21",
+   "valence": -8e-05
+  },
+  {
+   "type": "MBON04",
+   "valence": -9e-05
+  },
+  {
+   "type": "MBON05",
+   "valence": -0.0001
+  },
+  {
+   "type": "MBON29",
+   "valence": -0.00016
+  },
+  {
+   "type": "MBON26",
+   "valence": -0.00182
+  },
+  {
+   "type": "MBON27",
+   "valence": -0.00337
+  }
+ ],
+ "direct_lc4": [
+  {
+   "target": "DNp04",
+   "synapses": 6811.0
+  },
+  {
+   "target": "DNp02",
+   "synapses": 2279.0
+  },
+  {
+   "target": "DNp01",
+   "synapses": 3782.0
+  },
+  {
+   "target": "DNp09",
+   "synapses": 0.0
+  }
+ ],
+ "balance_lc4": [
+  {
+   "target": "DNp04",
+   "share": 0.73,
+   "excitation": 9329.0,
+   "inhibition": 2107.0
+  },
+  {
+   "target": "DNp02",
+   "share": 0.456,
+   "excitation": 4993.0,
+   "inhibition": 2562.0
+  },
+  {
+   "target": "DNp01",
+   "share": 0.29,
+   "excitation": 13027.0,
+   "inhibition": 7028.0
+  },
+  {
+   "target": "DNp09",
+   "share": 0.0,
+   "excitation": 4393.0,
+   "inhibition": 2730.0
+  }
+ ]
+}
