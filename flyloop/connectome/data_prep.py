@@ -72,15 +72,33 @@ class PreparedFiles:
     axon_dendrite: bool
 
 
-def find_files(folder: str | Path, *, prefer_axon_dendrite: bool = False) -> PreparedFiles:
-    """Locate the metadata CSV and the synapse-count matrix inside a folder.
+#: Weight matrices each dataset folder may provide.
+#:
+#: ``syncount`` is raw synapse counts, which is what a spiking model needs.
+#: ``inprop`` is the same connectivity normalised by each *postsynaptic*
+#: neuron's total input, so its columns sum to 1. That is the right weighting
+#: for a rate model: a connection of 7 synapses is negligible in absolute terms
+#: but a target pooling thousands of them still gets a substantial fraction of
+#: its input, which is exactly how LC4 is reached.
+MATRIX_KINDS = ("syncount", "inprop", "outprop")
 
-    Some datasets ship only the axon-dendrite-split matrix, so the plain
-    ``syncount`` file is preferred when present and the ``ad_`` variant is used
-    otherwise -- with which one was chosen recorded, because the two are not
-    interchangeable: the axon-dendrite matrix keeps only connections from an
-    axon onto a dendrite, which is a real filtering decision.
+
+def find_files(
+    folder: str | Path,
+    *,
+    matrix: str = "syncount",
+    prefer_axon_dendrite: bool = False,
+) -> PreparedFiles:
+    """Locate the metadata CSV and a weight matrix inside a folder.
+
+    Some datasets ship only the axon-dendrite-split matrix, so the plain file is
+    preferred when present and the ``ad_`` variant is used otherwise -- with
+    which one was chosen recorded, because the two are not interchangeable: the
+    axon-dendrite matrix keeps only connections from an axon onto a dendrite,
+    which is a real filtering decision.
     """
+    if matrix not in MATRIX_KINDS:
+        raise ValueError(f"matrix must be one of {MATRIX_KINDS}, got {matrix!r}")
     folder = Path(folder)
     if not folder.is_dir():
         raise FileNotFoundError(f"{folder} is not a directory")
@@ -88,16 +106,16 @@ def find_files(folder: str | Path, *, prefer_axon_dendrite: bool = False) -> Pre
     if not metas:
         raise FileNotFoundError(f"no *_meta.csv in {folder}")
 
-    plain = sorted(p for p in folder.glob("*syncount*.npz") if "_ad_" not in p.name)
-    split = sorted(folder.glob("*_ad_syncount*.npz"))
+    plain = sorted(p for p in folder.glob(f"*{matrix}*.npz") if "_ad_" not in p.name)
+    split = sorted(folder.glob(f"*_ad_{matrix}*.npz"))
     order = (split, plain) if prefer_axon_dendrite else (plain, split)
-    matrix = next((c[0] for c in order if c), None)
-    if matrix is None:
+    chosen = next((c[0] for c in order if c), None)
+    if chosen is None:
         raise FileNotFoundError(
-            f"no synapse-count matrix in {folder}. Found: "
+            f"no {matrix!r} matrix in {folder}. Found: "
             f"{[p.name for p in folder.glob('*.npz')]}"
         )
-    return PreparedFiles(meta=metas[0], matrix=matrix, axon_dendrite="_ad_" in matrix.name)
+    return PreparedFiles(meta=metas[0], matrix=chosen, axon_dendrite="_ad_" in chosen.name)
 
 
 def sign_report(meta: pd.DataFrame) -> pd.DataFrame:
@@ -134,16 +152,26 @@ def load_prepared(
     min_synapses: int = 5,
     sign_source: str = "flyloop",
     prefer_axon_dendrite: bool = False,
+    matrix: str = "syncount",
+    min_weight: float | None = None,
 ) -> Connectome:
     """Build a :class:`Connectome` from one prepared dataset folder.
 
     Parameters
     ----------
     min_synapses:
-        Drop connections weaker than this. On MaleCNS a threshold of 5 keeps
-        24% of the connections but 72% of the synapses, which is the usual
-        trade: most edges are one or two synapses and mostly reconstruction
-        noise.
+        Drop connections weaker than this, for count matrices. On MaleCNS a
+        threshold of 5 keeps 24% of the connections but 72% of the synapses,
+        which is the usual trade: most edges are one or two synapses and mostly
+        reconstruction noise.
+    matrix:
+        Which weighting to load -- see :data:`MATRIX_KINDS`. ``"inprop"``
+        weights are already normalised per postsynaptic neuron, so
+        ``min_synapses`` does not apply to them; use ``min_weight`` instead.
+    min_weight:
+        Threshold for non-count matrices. Defaults to keeping everything, since
+        the whole point of an input-proportion weighting is that many tiny
+        inputs add up.
     sign_source:
         ``"flyloop"`` uses this project's transmitter table;
         ``"dataset"`` uses the metadata's own ``sign`` column. They disagree on
@@ -152,7 +180,9 @@ def load_prepared(
     if sign_source not in ("flyloop", "dataset"):
         raise ValueError(f"sign_source must be 'flyloop' or 'dataset', got {sign_source!r}")
 
-    files = find_files(folder, prefer_axon_dendrite=prefer_axon_dendrite)
+    files = find_files(
+        folder, matrix=matrix, prefer_axon_dendrite=prefer_axon_dendrite
+    )
     raw = pd.read_csv(files.meta, low_memory=False)
 
     present = {k: v for k, v in COLUMN_MAP.items() if k in raw.columns}
@@ -178,7 +208,9 @@ def load_prepared(
     else:
         signs = sign_vector(neurons["nt"]).to_numpy()
 
-    keep = W.data >= min_synapses
+    counts = matrix == "syncount"
+    cutoff = min_synapses if counts else (min_weight if min_weight is not None else 0.0)
+    keep = W.data >= cutoff if counts else W.data > cutoff
     row, col, data = W.row[keep], W.col[keep], W.data[keep].astype(np.float32)
     data *= signs[row].astype(np.float32)
     nonzero = data != 0
@@ -195,7 +227,9 @@ def load_prepared(
             "meta_file": files.meta.name,
             "matrix_file": files.matrix.name,
             "axon_dendrite_only": files.axon_dendrite,
-            "min_synapses": min_synapses,
+            "matrix_kind": matrix,
+            "threshold": float(min_synapses if matrix == "syncount" else (min_weight or 0.0)),
+            "min_synapses": min_synapses if matrix == "syncount" else None,
             "sign_source": sign_source,
             "provenance": "YijieYin/connectome_data_prep",
         },

@@ -435,3 +435,109 @@ delivers a small fraction of that.
   which is what the single global `w_syn` is standing in for.
 - Either way, **do not build the closed loop on the current front end.** It
   would run, and it would mean nothing.
+
+---
+
+## Run 5 — a rate model gets the signal through
+
+**Date** 2026-09-15
+**Data** MaleCNS v1.0, **input-proportion** weights
+(`mcns_inprop_all_neuron.npz`), signed by presynaptic transmitter.
+**Model** `connectome_interpreter.MultilayeredNetwork` — tanh rate units with
+per-cell-type bias and slope — wrapped as `flyloop.brain.RateBrain`.
+**Protocol** A dark disc on the right eye's real hex columns, delivered to L1
+and L2, held constant across 8 synaptic hops.
+
+Run 4 showed the spiking model cannot carry a visual signal to LC4, because the
+pathway is far below single-spike threshold at every stage and there is nothing
+to amplify it. This run changes two things at once: **input-proportion weights**
+instead of synapse counts, and **per-cell-type gain and bias** instead of one
+global weight and silence.
+
+### The signal arrives
+
+Peak activation, real graph, largest disc (169 of 892 columns):
+
+```
+L1/L2 0.189  ->  Tm1 0.129, Tm2 0.146  ->  T5a 0.123  ->  LC4 0.118  ->  DNp04 0.328
+```
+
+The whole chain conducts. That is the thing Runs 1–4 could not do, and the
+reason is the weighting: a 7-synapse connection is negligible in absolute terms
+but a target pooling thousands of them receives a real fraction of its input.
+Convergence is what reaches LC4, and only a proportional weighting represents it.
+
+### Dose-response in disc size, with the control graph
+
+Peak activation, no bias:
+
+| disc columns | LC4 | DNp04 | DNp02 | DNp01 | DNp09 |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 0.004 | 0.012 | 0.000 | 0.000 | 0.000 |
+| 19 | 0.056 | 0.179 | 0.085 | 0.100 | 0.012 |
+| 61 | 0.147 | 0.453 | 0.230 | 0.262 | 0.036 |
+| 127 | 0.270 | 0.731 | 0.404 | 0.451 | 0.059 |
+| 169 | 0.340 | 0.828 | 0.478 | 0.539 | 0.066 |
+| **rewired, 169** | 0.078 | **0.000** | 0.060 | *0.960* | *0.260* |
+
+**DNp04 and DNp02 are wiring-specific.** DNp04 is exactly 0.000 on the
+degree-preserving rewire at every disc size while reaching 0.828 on the real
+graph. DNp09 stays weakest throughout, as the zero LC4→DNp09 synapse count from
+Run 3 predicts.
+
+### Baseline bias wakes the ON pathway — in a second model class
+
+Run 4 found that with no basal firing the glutamatergic ON pathway is mute.
+Setting a uniform bias in this completely different model reproduces it:
+
+| bias | Mi1 | T4a | T5a | LC4 | DNp04 |
+|---:|---:|---:|---:|---:|---:|
+| 0.0 | **0.000** | **0.000** | 0.123 | 0.118 | 0.328 |
+| 0.1 | 0.100 | 0.131 | 0.239 | 0.306 | 0.758 |
+| 0.3 | 0.291 | 0.372 | 0.612 | 0.730 | 0.984 |
+
+A spiking model and a rate model, sharing nothing but the connectome, agree:
+without baseline activity the fly's ON pathway carries no signal at all.
+
+### Two things this run does not support
+
+**The control graph fails for DNp01, so no claim is made about it.** On the
+rewired graph DNp01 reaches 0.960 — *higher* than the real graph's 0.539 — and
+DNp09 likewise rises. Both are high in-degree targets (DNp01 collects 13,027
+excitatory synapses), and a random rewiring hands high in-degree cells a large
+draw by construction. Degree-preserving rewiring is therefore informative for
+low in-degree targets and misleading for high ones. That sharpens the
+outstanding control-graph debt from Run 1 rather than settling it.
+
+**A first attempt at this comparison was invalid and is recorded as such.**
+Presenting looming as a sequence gave receding a *larger* response than looming,
+which looked like a finding and was an API misuse: `MultilayeredNetwork` injects
+input frame *t* at synaptic hop *t*, so its time axis is the hop axis. A pattern
+that is large early gets eight hops of propagation and one that is large late
+gets one. The comparison measured hop count. `steady_state()` now holds a
+pattern constant across hops, `RateBrain`'s docstring states the trap, and a
+test pins it.
+
+The corollary matters: **this model cannot test direction of motion at all.**
+Optomotor responses need temporal dynamics it does not have, so the optomotor
+hypothesis stays out of reach here — now for a stated structural reason rather
+than an unexplained failure.
+
+### Caveats
+
+- **Nothing is fitted.** Biases and slopes are hand-set; no visual firing-rate
+  targets ship with the package. Every number is a statement about wiring under
+  assumed excitability, not a prediction.
+- Activations are arbitrary units in [0, 1], not firing rates.
+- The bias is uniform across all 161,429 neurons, which is crude.
+- Only the right eye and one disc position were tested.
+
+### Next
+
+- Fit slopes and biases against published cell-type firing rates, which is what
+  `train_model` is for and what would turn these units into predictions.
+- A control that preserves in-degree *and* input composition, since the current
+  one breaks on high in-degree targets.
+- For motion and the optomotor hypothesis, a model with real temporal dynamics
+  is required — the LIF has that but cannot conduct, and this one conducts but
+  has no time. Neither alone is enough.
