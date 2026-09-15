@@ -85,6 +85,13 @@ detectors, and reading the descending neurons against three control graphs:
 | DNp09_L | **0.0** | 0.0 | 0.0 | 285.0 |
 | total spikes | 13,324 | 1,594 | 870,981 | 890,053 |
 
+Sweeping the drive from 5 to 200 Hz (`flyloop sweep --control`) settles what a
+single rate cannot: **DNp09 is never recruited at any drive strength**, and
+DNp01 is simply the last of the three to come in — at weak drive the order is
+DNp04 (67.5 Hz) > DNp02 (17.5) > DNp01 (7.5), which is the order ommatid
+measured through a camera. On the rewired graph every one of them stays at
+0.0 Hz across the whole sweep.
+
 Three things to read off that table, in `docs/RESULTS.md` with the caveats:
 
 - **The response needs the measured wiring.** A degree-preserving rewire kills
