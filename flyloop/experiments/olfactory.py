@@ -266,6 +266,7 @@ def differential_conditioning(
     hops: int = 6,
     graph_name: str = "original",
     readout: tuple[str, ...] = ("MBON", "KC"),
+    ensemble=None,
     progress: bool = False,
 ) -> ConditioningResult:
     """Approach an odour source, then test what the mushroom body learned.
@@ -273,6 +274,11 @@ def differential_conditioning(
     Each training trial is one step closer to the source, so both the odour and
     the dopamine grow -- the "closer means more dopamine" rule, moved to the
     circuit that can use it.
+
+    ``ensemble``, a :class:`~flyloop.experiments.ensemble.MBONEnsemble`, adds a
+    ``balance`` column: the valence-weighted sum across MBONs rather than their
+    mean. Run 8 showed the mean cannot see the learning, because MBONs of
+    opposite sign and very different output weight cancel in it.
     """
     receptors = olfactory_receptors(connectome)
     mb = mushroom_body(connectome)
@@ -296,7 +302,10 @@ def differential_conditioning(
         rows = {}
         for name, v in odours.items():
             res = brain.run(steady_state(v, hops), record=record)
-            rows[name] = {k: float(res.populations[k].max()) for k in record}
+            row = {k: float(res.populations[k].max()) for k in record}
+            if ensemble is not None:
+                row["balance"] = ensemble.readout(res.activations.max(axis=1))
+            rows[name] = row
         return pd.DataFrame(rows).T
 
     before = probe()

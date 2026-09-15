@@ -859,3 +859,90 @@ where the connectome is necessary and not sufficient.
   over 97 cells.
 - Or accept the boundary and report it: this is where a connectome-derived
   feedforward model stops, and it stops for a reason that can be stated.
+
+---
+
+## Run 9 — reading the mushroom body as a balance
+
+**Date** 2026-09-15
+**Data, model** MaleCNS v1.0, input-proportion weights, rate model, KC slope 0.35.
+**Question** Run 8 concluded that olfactory learning does not reach the
+descending neurons, and blamed the readout: averaging 97 MBONs of opposite sign
+and very different output weight throws the signal away. Does reading the
+*balance* instead recover it?
+
+### The readout
+
+Every MBON is given a valence: its net signed influence on the descending
+neurons that drive approach (`DNa01`, forward walking) minus those that drive
+withdrawal (`MDN` backward, `DNp09` stop), propagated four synapses with a decay
+of 0.5 per hop. The readout is then the valence-weighted sum of MBON activity
+rather than its mean.
+
+Nothing is hand-labelled from the literature. The weights come out of the signed
+connectome; the only prior knowledge is the behavioural role of those four
+descending neurons, which this project has used since its first run. On MaleCNS
+the result splits the population sensibly: 20 MBONs positive, 17 negative, the
+strongest approach-weighted being MBON32, MBON30 and MBON35 -- the same
+output-stage cells Run 8 identified as the ones that actually drive descending
+neurons.
+
+### First attempt: over-trained, and misleading
+
+Run at the same settings as Run 8 (learning rate 1.0, 16 trials) the balance
+showed a within-odour effect of −0.000002 for **both** odours: a reward-driven
+change, since dopamine off gave exactly zero, but no odour specificity at all.
+
+That was an artefact of over-training. Those settings depress 22% of all KC→MBON
+weight, which is a near-global change that swamps any odour-specific component.
+**The learning rate has to be low enough that the depression stays selective**,
+and nothing in the earlier runs made that constraint visible.
+
+### With matched, weaker training
+
+Relative change in each readout, in percent; negative means the readout fell
+further when that odour was the rewarded one.
+
+| learning rate | depression | readout | odour A effect | odour B effect |
+|---|---:|---|---:|---:|
+| 0.05 | 1.3% | MBON mean | −0.413 pp | −0.111 pp |
+| 0.05 | 1.3% | **balance** | **−0.446 pp** | +0.103 pp |
+| 0.20 | 4.9% | MBON mean | −1.581 pp | −0.092 pp |
+| 0.20 | 4.9% | **balance** | **−1.700 pp** | **−0.409 pp** |
+
+**The balance is the better readout, and the gain is where it was predicted.**
+For odour B — which showed essentially nothing in the mean (−0.092 pp) — the
+balance recovers a reward-specific effect 4.4× larger (−0.409 pp). For odour A
+it is modestly larger in both conditions. The direction is the one
+dopamine-gated depression predicts in every case at lr 0.2.
+
+Because the valence weights are each MBON's influence on the motor output, a
+change in the balance *is* a change in the net mushroom body drive onto
+descending neurons. So Run 8's conclusion needs narrowing rather than reversing:
+**the learned signal does reach the motor output, at about 1.7% of the balance,
+and Run 8 could not see it because it was averaging.**
+
+### What this still does not support
+
+- **The effect is small and most of the change is not reward-driven.** Of an
+  8.3% total drop in odour A's balance at lr 0.2, only 1.7 points are specific
+  to having been rewarded. The rest is odour-driven depression that happens to
+  both odours.
+- **It does not restore behaviour.** A 1.7% shift in the net drive onto DNa01,
+  MDN and DNp09 is far below what moved the animal in the visual fixation runs,
+  where the wiring-specific difference in bearing was 13.5° against 25.1°.
+- Run 8's structural explanation stands and explains the size: the MBONs where
+  plasticity lands and the MBONs with motor output are anticorrelated at
+  r = −0.42, so weighting by output necessarily up-weights the cells that learn
+  least.
+- One odour pair, one seed, two learning rates. Odour B's sign flips between
+  them, so at lr 0.05 the training is too weak to resolve.
+- The decay of 0.5 per hop is a modelling choice, not a measurement.
+
+### Next
+
+- Sweep the learning rate properly to find where reward specificity peaks
+  against total depression — the two trade off and nothing here has located the
+  optimum.
+- Several odour pairs matched for sparseness, so a sign flip in one odour is
+  not the whole B result.
