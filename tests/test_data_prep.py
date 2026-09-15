@@ -147,10 +147,35 @@ def test_missing_matrix_lists_what_was_found(tmp_path):
     pd.DataFrame({"bodyid": [1], "type": ["a"], "top_nt": ["gaba"]}).to_csv(
         folder / "e_meta.csv", index=False
     )
-    with pytest.raises(FileNotFoundError, match="no synapse-count matrix"):
+    with pytest.raises(FileNotFoundError, match="no 'syncount' matrix"):
         load_prepared(folder)
 
 
 def test_unknown_dataset_name_is_rejected(tmp_path):
     with pytest.raises(KeyError, match="unknown dataset"):
         load_dataset(tmp_path, "not_a_connectome")
+
+
+def test_unknown_matrix_kind_is_rejected(mini):
+    with pytest.raises(ValueError, match="matrix must be one of"):
+        load_prepared(mini, matrix="vibes")
+
+
+def test_inprop_matrix_is_selected_when_asked(tmp_path):
+    """The rate model needs input proportions, not counts."""
+    import numpy as np
+    import scipy.sparse as sp
+
+    folder = _write_dataset(tmp_path / "both_kinds", prefix="k")
+    dense = np.zeros((4, 4), dtype=np.float32)
+    dense[0, 1] = 0.75  # a proportion, not a count
+    sp.save_npz(folder / "k_inprop_all_neuron.npz", sp.csr_matrix(dense))
+
+    counts = load_prepared(folder, matrix="syncount", min_synapses=5)
+    props = load_prepared(folder, matrix="inprop")
+    assert counts.meta["matrix_kind"] == "syncount"
+    assert props.meta["matrix_kind"] == "inprop"
+    assert props.W[0, 1] == pytest.approx(0.75)
+    # min_synapses must not silently delete proportional weights below 5
+    assert props.W.nnz == 1
+    assert props.meta["min_synapses"] is None
