@@ -32,3 +32,23 @@ checked with its own validator against both surfaces used here
 (`#f7f8f7` light, `#141715` dark). Two light-mode slots sit below 3:1 contrast,
 so every chart ships direct labels and a table view — that relief is required,
 not optional. Do not substitute colours without re-running the validator.
+
+## Run 10 — the embodied figure
+
+`embodied.png` is regenerated from measured data, not transcribed:
+
+```bash
+MUJOCO_GL=disable flyloop --data-root ~/connectome_data_prep \
+    embodied --control --out docs/figures/embodied/summary.csv
+python docs/figures/plot_embodied.py
+```
+
+`embodied/summary.csv` and `embodied/trajectories.csv` are the raw run output.
+Each mirror pair costs about 11 minutes of CPU (30 control steps x 2 episodes,
+~5.4 s per step: 3.5 s of rate model and 1.8 s of physics), so the full figure
+with its control is roughly an hour.
+
+The bearing panel folds left-target episodes onto the right before averaging.
+That is only legitimate because the design is a mirror pair by construction —
+the two episodes share a body seed and differ solely in the sign of the
+stimulus. Do not reuse that fold on data that is not paired.

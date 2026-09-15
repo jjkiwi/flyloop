@@ -130,6 +130,38 @@ Two things to read off that, both in `docs/RESULTS.md`:
   learning centre and is not in the visual steering loop. That is a fact about
   the animal, not a limitation of the code.
 
+## It walks a physical fly
+
+```bash
+flyloop --data-root ~/connectome_data_prep embodied --control
+```
+
+NeuroMechFly v2 in MuJoCo — 42 actuated joints, tripod gait, contact physics —
+steered by the same unfitted readout: the left-right difference of DNa02.
+
+| graph | fixation | commanded turn | mean \|bearing\| |
+|---|---:|---:|---:|
+| MaleCNS | **+37.7° ± 1.2** | +0.050 | 9.7° |
+| rewired control | **+3.0° ± 1.4** | +0.002 | 43.9° |
+
+![Run 10](docs/figures/embodied.png)
+
+**The measurement is a mirror pair, and that is not a detail.** Told to walk
+straight for 2 s, NeuroMechFly drifts +14.6°, −0.4° and −40.6° on three body
+seeds. So each measurement runs one body seed twice — target 35° left, target 35°
+right — and takes the difference. Gait noise is common to both and cancels.
+
+Skipping that would have been easy and wrong. Read one-sidedly, the rewired
+control looks like it steers: mean |bearing| 43.9° against 9.7°, a clean-looking
+4.5× separation. Split by side, its bearing goes −35° → −32.9° on the left and
++35° → **+58.8°** on the right — it never responded to the stimulus at all, both
+episodes just drifted left. The mirror statistic reports +3.0°, which is the
+honest number.
+
+The connectome supplies a direction and the body supplies the gain: a commanded
+turn of 0.050 — 5% of the controller's range — becomes 37.7° of heading once the
+gait integrates it. The fly aims in 0.8 s and holds; in 1.5 s it does not arrive.
+
 ## Quick start
 
 ```bash
@@ -201,7 +233,7 @@ met at all.
 | `motor/` | descending-neuron readout; tripod gait (explicitly not connectome-derived) |
 | `connectome/controls.py` | rewired, relabelled and sign-scrambled control graphs |
 | `vision/columns.py` | real retinotopy from published columnar tables |
-| `body/` | kinematic stub, NeuroMechFly adapter, the `Body` protocol |
+| `body/` | kinematic stub, NeuroMechFly v2 in MuJoCo, the `Body` protocol |
 | `experiments/` | looming acceptance test with controls, reactive baseline |
 
 The `Body` protocol is narrow on purpose: brain and body exchange a panorama and
@@ -213,8 +245,9 @@ hexapod over a socket, touches one file.
 1. **Brain on the desk** -- load a connectome, run LIF, check known circuits. *Done.*
 2. **Eyes** -- camera to ommatidia to input currents. *Done.*
 3. **Descending readout** -- DNa01, DNa02, MDN, DNp09, GF as the animal's API. *Done.*
-4. **A body** -- kinematic stub done; NeuroMechFly v2 adapter written against the
-   FlyGym 2.x API but **not yet executed** (needs Python 3.12 and MuJoCo).
+4. **A body** -- kinematic stub and NeuroMechFly v2 in MuJoCo, both driven by the
+   same readout. *Done*; see Run 10. The adapter targets FlyGym 1.x
+   (`flygym-gymnasium`), which runs from Python 3.10 up; 2.x needs 3.12 exactly.
 5. **A physical hexapod** -- brain on a workstation, body on a Pi, over a socket.
 
 See `docs/PLAN.md` for the roadmap and `docs/DATA.md` for getting real data.

@@ -946,3 +946,97 @@ and Run 8 could not see it because it was averaging.**
   optimum.
 - Several odour pairs matched for sparseness, so a sign flip in one odour is
   not the whole B result.
+
+## Run 10 — the same readout, in a body with legs
+
+**Date** 2026-09-15
+**Data, model** MaleCNS v1.0, input-proportion weights, rate model, 5 hops.
+**Body** NeuroMechFly v2 in MuJoCo via FlyGym 1.x (`flygym-gymnasium`), 42
+actuated joints, tripod gait with stumbling and retraction correction, 0.1 ms
+physics step, 50 ms control step. `MUJOCO_GL=disable`: full physics, no pixels.
+**Question** Every result so far moved a point on a plane. Does the same
+unfitted descending readout — the left-right difference of DNa02 — steer a body
+that has legs, mass and contact physics?
+
+### The measurement had to be designed before the experiment
+
+A walking NeuroMechFly does not go straight. Commanded to walk straight for 2 s
+it drifts **+14.6°, −0.4° and −40.6°** on three body seeds — a spread of 55°,
+several times larger than any steering signal expected here. A single episode
+therefore measures gait noise, not behaviour.
+
+So each measurement is a **mirror pair**: the same body seed walks once at a
+target 35° to its right and once at the mirror image 35° to its left. The gait
+noise is common to both; only the stimulus differs. The statistic is
+
+    fixation = (Δθ_left − Δθ_right) / 2
+
+positive when the fly turned toward the target in both mirror images.
+
+### Result
+
+Target 25 mm away at ±35°, 30 control steps (1.5 s), 3 body seeds per graph.
+
+| graph | fixation | commanded turn | mean \|bearing\| |
+|---|---:|---:|---:|
+| MaleCNS | **+37.72° ± 1.17** | +0.0504 ± 0.0013 | 9.7° |
+| rewired control | **+3.00° ± 1.38** | +0.0021 ± 0.0042 | 43.9° |
+
+**The fly aims, and aiming needs the measured wiring.** On MaleCNS the angle to
+the target falls from 35° to about zero in 0.8 s and is then held: −35° → −3.2°
+with the target on the left, +35° → −5.8° with it on the right. The rewired
+control does not aim at all (+3.00°, twelve times smaller, and its commanded
+turn is statistically indistinguishable from zero).
+
+Body drift is genuinely cancelled rather than merely averaged: the three seeds
+span 55° of intrinsic drift but only 2.3° of fixation.
+
+### The control hides a trap, and it is the reason for the mirror design
+
+Read naively, the control looks like it *does* something: mean |bearing| 43.9°
+against 9.7°, a 4.5× separation that would have made a publishable-looking
+number. But split by side, the rewired fly's bearing goes −35° → −32.9° on the
+left and +35° → **+58.8°** on the right. It did not respond to the stimulus in
+either case; both episodes simply drifted left, which happens to hold a
+left-hand target roughly in place and push a right-hand target away.
+
+**A one-sided experiment here would have reported a real-looking steering effect
+produced entirely by the gait.** The mirror-pair statistic reports +3.00°,
+which is the honest answer.
+
+### What the gait contributes
+
+The commanded turn is small and nearly constant — +0.050, about 5% of the
+controller's range — yet it produces 37.7° of heading change. The tripod gait
+integrates a small steady difference in descending drive over many steps. So the
+connectome supplies a *direction*, and the body supplies the *gain*. Neither
+number alone describes the behaviour.
+
+### What this does not show
+
+- **The fly aims but does not arrive.** In 1.5 s it closes 8.1–8.4 mm of 25 mm
+  and ends 16.8 mm out. Turning costs forward speed; a straight-walking
+  NeuroMechFly covers 27 mm in 2 s. Nothing here tests approach to contact.
+- **The gait is not connectome-derived.** The CPG, stumbling correction and
+  retraction rules are FlyGym's hand-written controller. The connectome supplies
+  exactly two numbers per control step. A claim that "the connectome walks the
+  fly" would be false.
+- **Vision is analytic.** Bearing and angular size are computed from the pose and
+  painted onto the hex columns, not rendered through the fly's optics. This is
+  what the other connectome-in-a-body projects do, and it does not change what
+  the brain receives, but it is not a test of the optics.
+- **The brain is quasi-static.** The rate model's time axis is the synaptic-hop
+  axis (Run 5), so it has no memory between control steps. Fixation is a
+  defensible use of that approximation; anything about motion direction is not.
+- **Dopamine is present and irrelevant**, as Runs 6 and 7 established: the
+  mushroom body is not in the visual steering loop.
+- Three body seeds, one bearing, one distance, one episode length.
+
+### Next
+
+- Sweep the bearing. A single 35° offset cannot distinguish a proportional
+  controller from a bang-bang one, and the near-constant commanded turn
+  (+0.050 ± 0.0013 across seeds) hints at saturation rather than proportionality.
+- Longer episodes, to ask whether it reaches the target or orbits it.
+- The `relabel_neurons` and `scramble_signs` controls, which this run skipped for
+  time — each mirror pair costs 11 minutes of wall clock.
