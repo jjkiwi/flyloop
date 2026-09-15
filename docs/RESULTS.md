@@ -646,3 +646,124 @@ does, coalescing included, and checks the located weights are the right ones.
   change behaviour, and the same machinery is already in place.
 - Repeat the approach from several starting bearings with seeds, to turn the
   fixation result into a measurement.
+
+---
+
+## Run 7 — fixation measured, and dopamine moved to where it works
+
+**Date** 2026-09-15
+**Data, model** MaleCNS v1.0, input-proportion weights, rate model.
+
+Two follow-ups from Run 6: turn the one-anecdote fixation result into a
+measurement, and move the reward to the modality the mushroom body is actually
+for.
+
+### Fixation, across five starting bearings
+
+Target 1.6 away, fly started 40, 20, 0, -20 and -40 degrees off-axis, 30 control
+steps, no dopamine.
+
+| start | original: final bearing | rewired: final bearing |
+|---:|---:|---:|
+| −40° | **−12.2°** | −56.3° |
+| −20° | **−7.5°** | −6.7° |
+| 0° | **−4.7°** | +5.9° |
+| +20° | **−1.8°** | +28.8° |
+| +40° | **+2.5°** | +29.4° |
+
+| graph | mean \|bearing\| | s.d. |
+|---|---:|---:|
+| original | **13.5°** | 9.5 |
+| rewired | **25.1°** | 16.8 |
+
+The real graph converges toward the target from every starting bearing, and the
+further off-axis it begins the more it turns. The rewired graph **diverges** at
+large bearings: from −40° it ends at −56°, from +20° at +29°, from +40° at +29°.
+It is not merely worse at aiming, it turns the wrong way. Fixation is a property
+of the measured wiring, now across five conditions rather than one.
+
+Distance closed barely differs (0.449 vs 0.413) and remains the wrong statistic,
+for the reason Run 6 gave: the loop walks forward regardless.
+
+### Calibrating the Kenyon cell code, because conditioning is impossible without it
+
+Run 6 ended by proposing an olfactory version of the reward task. The olfactory
+pathway is fully present -- 2,635 ORNs with proper glomerular names, 197
+glomerular projection neurons -- and it is what drives the mushroom body:
+Kenyon cell input is 3,547 units of input proportion from central-brain
+intrinsic neurons (projection neurons and the APL) against **19.3 from the
+entire visual pathway**. Run 6's finding, confirmed from the input side.
+
+But at the model's default gain the odour code is not sparse, and a dense code
+makes odour-specific learning impossible by construction:
+
+| KC slope | KCs active | sparseness | overlap of two odours |
+|---:|---:|---:|---:|
+| 5.0 | 3,579 | 88.1% | 99.8% |
+| 1.0 | 3,318 | 81.6% | 87.4% |
+| 0.6 | 1,795 | 44.2% | 43.9% |
+| 0.45 | 732 | 18.0% | 19.8% |
+| **0.35** | **181** | **4.5%** | **6.1%** |
+| 0.30 | 66 | 1.6% | 4.5% |
+| 0.10 | 0 | 0.0% | — |
+
+In the animal roughly 5% of Kenyon cells respond to a given odour. **0.35
+reproduces that**, and is now `SPARSE_KC_SLOPE`. The window is narrow -- a
+factor of three either way gives a dense code or a dead one -- which is worth
+knowing: the mushroom body's sparse code is not an emergent property of the
+connectome in this model, it has to be imposed by per-cell-type gain.
+
+### Differential conditioning: dopamine changes something at last
+
+The fly approaches an odour source over 16 trials; odour and dopamine both grow
+as it nears (reward 0.135 → 0.654). A second odour is experienced throughout
+without reward.
+
+| condition | Δ paired | Δ unpaired | depression |
+|---|---:|---:|---:|
+| A rewarded, B not | −0.007565 | −0.004180 | 0.219 |
+| B rewarded, A not (swap) | −0.004156 | −0.005829 | 0.184 |
+| A rewarded, **dopamine off** | **0.000000** | **0.000000** | 0.000 |
+| **rewired graph**, A rewarded | −0.000000 | 0.000000 | 0.0001 |
+
+**Dopamine now changes the mushroom body's output.** With dopamine off the
+change is exactly zero, so every effect below is reward-driven.
+
+**And the naive statistic is contaminated.** The learning index (unpaired minus
+paired change) is +0.0034 in one direction and −0.0017 in the other: it does
+*not* flip when the reward is swapped. Odour A falls more than odour B whichever
+one is rewarded, because the two odours drive different numbers of Kenyon cells
+and start from different response magnitudes. Reporting that index alone would
+have claimed learning that the swap does not support.
+
+The valid comparison is the same odour, rewarded versus not:
+
+- **Odour A: −0.00757 when rewarded, −0.00583 when not.** It falls 30% further
+  when it is the rewarded odour. A real, reward-specific effect.
+- **Odour B: −0.00416 when rewarded, −0.00418 when not.** Identical to three
+  decimal places. **No learning at all.**
+
+So the effect is present, modest, and asymmetric between odours. Odour B
+activates 1.5% of Kenyon cells against A's 4.5%, and 18% of B's cells lie inside
+A's set while only 6% of A's lie inside B's — so B has both a weaker handle on
+the output and more of its cells depressed by A's pairing.
+
+### What this run does not support
+
+- **The rewired control is uninformative here, not passed.** Its depression is
+  0.0001 and its odour overlap exactly 0.000: the scrambled mushroom body does
+  not respond to odours at all, so it cannot show whether the effect needs the
+  real wiring. A control that stays silent has not controlled anything.
+- **One odour pair, one seed, no repeats.** The A/B asymmetry means the choice
+  of glomeruli matters, and two odours is not a sample.
+- Learning rate, KC slope and reward scale are all set by hand. The KC slope is
+  at least calibrated against a published constraint; the others are not.
+
+### Next
+
+- More odour pairs matched for sparseness, so the asymmetry does not dominate.
+- A control graph that preserves the mushroom body's structure while scrambling
+  elsewhere — the current rewire destroys the thing under test.
+- Read the descending neurons the MBONs actually reach (DNp52, DNg104, DNa03 —
+  not DNa02) and ask whether the depression changes their output, which would
+  connect conditioning to behaviour rather than stopping at the MBON.
