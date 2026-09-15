@@ -79,29 +79,63 @@ class PoissonDrive:
 
     Rates are per-neuron in Hz and may be updated between steps, which is how
     the closed loop injects what the eye currently sees.
+
+    There are two layers. The **stimulus** layer is what :meth:`set` writes and
+    :meth:`clear` erases, frame by frame. The **background** layer sits under it
+    and survives :meth:`clear`, because a tonic rate is a property of the
+    preparation rather than of the current stimulus.
+
+    Background matters more than it looks. The Shiu et al. model has zero basal
+    firing, and a consequence of that -- measured here on MaleCNS -- is that
+    *inhibitory pathways cannot transmit anything at all*: driving L1, which is
+    glutamatergic and therefore inhibitory, at 200 Hz leaves its 74,170-synapse
+    target Mi1 at exactly 0.0 Hz, because there is nothing to inhibit. Give Mi1
+    a tonic 60 Hz and the same L1 drive suppresses it from 30.6 to 16.6 Hz. In
+    a silent network the fly's entire ON pathway is mute.
     """
 
     def __init__(self, n: int, rng: np.random.Generator):
-        self._rates = np.zeros(n, dtype=np.float32)
+        self._stimulus = np.zeros(n, dtype=np.float32)
+        self._background = np.zeros(n, dtype=np.float32)
         self._rng = rng
 
     def set(self, neurons: np.ndarray, rate_hz: float | np.ndarray) -> None:
-        """Set the drive rate for ``neurons`` (Hz).  Set 0 to switch off."""
-        self._rates[neurons] = rate_hz
+        """Set the stimulus rate for ``neurons`` (Hz).  Set 0 to switch off."""
+        self._stimulus[neurons] = rate_hz
+
+    def set_background(
+        self, neurons: np.ndarray | None, rate_hz: float | np.ndarray
+    ) -> None:
+        """Set a tonic rate that :meth:`clear` will not remove.
+
+        ``neurons=None`` applies it to every neuron, which is the crude way to
+        give a connectome-derived network the spontaneous activity the model
+        otherwise lacks.
+        """
+        if neurons is None:
+            self._background[:] = rate_hz
+        else:
+            self._background[neurons] = rate_hz
 
     def clear(self) -> None:
-        self._rates[:] = 0.0
+        """Erase the stimulus layer, leaving the background in place."""
+        self._stimulus[:] = 0.0
+
+    def clear_background(self) -> None:
+        self._background[:] = 0.0
 
     @property
     def rates(self) -> np.ndarray:
-        return self._rates
+        """Total drive per neuron: stimulus plus background."""
+        return self._stimulus + self._background
 
     def sample(self, dt: float) -> np.ndarray:
         """Number of external input spikes arriving at each neuron this step."""
-        active = self._rates > 0
-        out = np.zeros(len(self._rates), dtype=np.float32)
+        rates = self.rates
+        active = rates > 0
+        out = np.zeros(len(rates), dtype=np.float32)
         if active.any():
-            out[active] = self._rng.poisson(self._rates[active] * dt).astype(np.float32)
+            out[active] = self._rng.poisson(rates[active] * dt).astype(np.float32)
         return out
 
 
@@ -150,6 +184,7 @@ class LIFBrain:
         p = self.p
         if hasattr(self, "drive"):
             self.drive.clear()
+            self.drive.clear_background()
         self.v = np.full(self.n, p.v_rest, dtype=np.float32)
         self.g = np.zeros(self.n, dtype=np.float32)
         self.refrac = np.zeros(self.n, dtype=np.int32)

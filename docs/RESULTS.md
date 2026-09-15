@@ -333,3 +333,105 @@ into LC4 never could.
 flyvis stays a dependency worth keeping for a machine with network access and
 Python 3.12, where its pretrained optic-lobe model is a stronger front end than
 anything derived from connectivity alone.
+
+---
+
+## Run 4 — showing the fly something, and why it does not work
+
+**Date** 2026-09-15
+**Data, graph, model** as Run 1.
+**Protocol** A looming disc painted onto the fly's own hexagonal columns
+(892 on the right eye, from `assignedOlHex`), delivered to the lamina monopolar
+cells L1 and L2 in the columns it covers, 8 frames × 25 ms after a 100 ms
+silent baseline. Plus direct activation of whole L1 and L2 populations, and a
+structural audit of the pathway.
+
+This was the step Runs 1–3 needed: they injected current into LC4, so nothing
+between the eye and LC4 was ever exercised.
+
+### The headline result is negative, and its cause is identifiable
+
+**A looming stimulus presented to the eye does not reach LC4.** Not at any
+background level tried, not at any drive rate. The LC4 responses in Runs 1–3
+remain valid statements about LC4's *output* wiring, but LC4 can be reached by
+injection and not by light.
+
+Two independent reasons, both measured:
+
+**1. Inhibitory pathways transmit nothing in a network with no basal firing.**
+L1 — the first cell of the ON pathway — is glutamatergic, and glutamate is
+inhibitory in *Drosophila*. It makes 74,170 synapses onto Mi1. Driving it:
+
+| condition | L1 | Mi1 |
+|---|---:|---:|
+| no background, L1 off | 0.0 Hz | 0.0 Hz |
+| no background, L1 driven at 200 Hz | 127.9 Hz | **0.0 Hz** |
+| Mi1 held at 60 Hz background, L1 off | 0.0 Hz | 30.6 Hz |
+| Mi1 held at 60 Hz background, L1 driven | 127.7 Hz | **16.6 Hz** |
+
+Driving L1 as hard as the model allows leaves its target at exactly zero,
+because there is nothing to inhibit. Give Mi1 a tonic rate and the same drive
+suppresses it by 46%. The Shiu et al. model's zero basal firing is a documented
+limitation; this is the consequence that does not seem to be written down
+anywhere: **it does not merely make the network quiet, it makes every
+sign-inverting pathway mute, and the fly's entire ON pathway with it.**
+
+`PoissonDrive.set_background()` now exists for this, and it survives the
+per-frame `clear()`.
+
+**2. The columnar pathway to LC4 is far below threshold at every stage.**
+A single spike needs about 162 synapses to fire a resting neuron in this model
+(`flyloop theory`). Median synapses per connected pair:
+
+| connection | pairs | median syn/pair | one spike enough? |
+|---|---:|---:|---|
+| L2 → Tm1 | 909 | 129 | borderline |
+| L2 → Tm2 | 1,074 | 128 | borderline |
+| L1 → Mi1 | 915 | 85 | no |
+| Tm1 → T5a | 1,785 | 9 | no |
+| Tm2 → T5a | 2,039 | 13 | no |
+| Tm2 → LC4 | 1,076 | 7 | no |
+| **T5a → LC4** | **3** | **5** | no |
+| **T4a → LC4** | **0** | — | **no connection at all** |
+
+The chain attenuates at every step: 129 synapses into the medulla, 9–13 into
+the motion detectors, 5–7 into LC4. LC4 is reached only by massive convergence
+of tiny inputs, and this model has no mechanism — no basal activity, no learned
+gain, no graded transmission — to bridge that. Driving the *entire* L2
+population on one side confirms it: at 100 Hz nothing downstream fires at all;
+at 400 Hz, LC4 reaches 1.3 Hz. A stimulus covering at most 169 of 892 columns
+delivers a small fraction of that.
+
+### What this means for the project
+
+- **Runs 1–3 stand, with their scope narrowed.** They measured LC4's downstream
+  wiring, and that measurement is unaffected. They did not, and could not, say
+  anything about vision.
+- **The optomotor and phototaxis hypotheses remain untestable here**, for the
+  same reason ommatid could not confirm them: the front end does not deliver.
+  Their negative result now has a mechanism rather than only a measurement.
+- **This is why flyvis is trained.** A connectome-constrained model *learns*
+  its gains rather than deriving them from synapse counts. Synapse count times
+  one global weight cannot carry a signal through a pathway built on
+  convergence. That is an argument for the trained optic-lobe model as the
+  front end, not a detail.
+
+### Caveats
+
+- Descending populations have 1–2 neurons per side, so in a 200 ms window one
+  spike is 5 Hz. The ±10–20 Hz deltas seen with background on are one or two
+  spikes and should not be read as responses.
+- Background was applied uniformly, which is crude: real spontaneous rates are
+  cell-type specific. A uniform 5 Hz already produced 255,538 spikes per 200 ms
+  and pushed parts of the network into saturation.
+- The drive sign is applied by hand: no photoreceptor stage exists, so "dark
+  object drives L1 and L2" stands in for the histaminergic inversion.
+
+### Next
+
+- Front end from `flyvis` (trained, on a machine with network access and Python
+  3.12), feeding its T4/T5 or Tm outputs into MaleCNS at the shared cell types.
+- Or calibrate per-cell-type gain in this model against published firing rates,
+  which is what the single global `w_syn` is standing in for.
+- Either way, **do not build the closed loop on the current front end.** It
+  would run, and it would mean nothing.
