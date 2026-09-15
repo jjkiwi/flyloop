@@ -65,6 +65,99 @@ def mushroom_body(c: Connectome) -> dict[str, np.ndarray]:
     }
 
 
+def mbon_targets(c: Connectome, *, n: int = 8) -> list[str]:
+    """Descending neuron types the mushroom body output actually reaches.
+
+    Not the ones a visual task uses. Summed over all MBONs, the strongest
+    descending targets in MaleCNS are DNp52, DNg104, DNge151 and DNa03 --
+    DNa02, which carries steering in every visual run in this project, receives
+    about 1% of its input from MBONs and does not appear here. If conditioning
+    is going to show up in behaviour, this is where to look for it.
+    """
+    types = c.neurons["type"].astype(str)
+    mbon = np.flatnonzero(types.str.startswith("MBON").to_numpy())
+    if len(mbon) == 0:
+        return []
+    out = np.asarray(np.abs(c.W.tocsr()[mbon]).sum(axis=0)).ravel()
+    descending = np.flatnonzero(
+        c.neurons.get("super_class", pd.Series([""] * c.n))
+        .astype(str)
+        .str.contains("descending")
+        .to_numpy()
+    )
+    if len(descending) == 0:
+        return []
+    by_type = (
+        pd.Series(out[descending], index=types.to_numpy()[descending])
+        .groupby(level=0)
+        .sum()
+        .sort_values(ascending=False)
+    )
+    return list(by_type.head(n).index)
+
+
+def mbon_learning_vs_output(c: Connectome) -> pd.DataFrame:
+    """Per MBON type: how much Kenyon cell input it gets, and how much it drives
+    descending neurons.
+
+    These are the two things that would have to coincide for olfactory learning
+    to reach behaviour -- plasticity acts on the KC synapse, and only descending
+    neurons move the animal.
+
+    On MaleCNS they do not coincide. The two quantities are **anticorrelated,
+    r = -0.42**: MBON14 receives the most Kenyon cell input (3.54) and has
+    exactly zero descending output, while MBON33 has the most descending output
+    (0.362) and roughly a tenth of the Kenyon cell input. Twelve of 97 MBONs
+    drive descending neurons at all.
+
+    This is not a path-length problem -- the learning-site MBONs sit one or two
+    hops from a descending neuron. The connections exist and are negligible. The
+    learned signal is presumably read out by the MBON ensemble as a whole rather
+    than by the cells the plasticity lands on, which a feedforward model
+    weighting each edge by input proportion will not capture.
+    """
+    types = c.neurons["type"].astype(str)
+    mbon = np.flatnonzero(types.str.startswith("MBON").to_numpy())
+    kc = np.flatnonzero(types.str.startswith("KC").to_numpy())
+    if len(mbon) == 0 or len(kc) == 0:
+        return pd.DataFrame(columns=["kc_input", "dn_output"])
+    descending = np.flatnonzero(
+        c.neurons.get("super_class", pd.Series([""] * c.n))
+        .astype(str)
+        .str.contains("descending")
+        .to_numpy()
+    )
+    kc_in = np.asarray(np.abs(c.W.tocsc()[kc][:, mbon]).sum(axis=0)).ravel()
+    dn_out = (
+        np.asarray(np.abs(c.W.tocsr()[mbon][:, descending]).sum(axis=1)).ravel()
+        if len(descending)
+        else np.zeros(len(mbon))
+    )
+    return (
+        pd.DataFrame(
+            {"type": types.to_numpy()[mbon], "kc_input": kc_in, "dn_output": dn_out}
+        )
+        .groupby("type")[["kc_input", "dn_output"]]
+        .sum()
+        .sort_values("kc_input", ascending=False)
+    )
+
+
+def _populations(c: Connectome, labels: tuple[str, ...]) -> dict[str, np.ndarray]:
+    """Neuron rows for each label: 'KC', 'MBON', or any cell type name."""
+    mb = mushroom_body(c)
+    types = c.neurons["type"].astype(str).to_numpy()
+    out: dict[str, np.ndarray] = {}
+    for label in labels:
+        if label.lower() in mb:
+            rows = mb[label.lower()]
+        else:
+            rows = np.flatnonzero(types == label)
+        if len(rows):
+            out[label] = rows
+    return out
+
+
 def kc_slopes(c: Connectome, slope: float = SPARSE_KC_SLOPE) -> dict[str, float]:
     """Per-cell-type slope dictionary setting every Kenyon cell type to ``slope``."""
     types = c.neurons["type"].astype(str)
@@ -196,7 +289,8 @@ def differential_conditioning(
         "paired": odour(connectome, paired, receptors),
         "unpaired": odour(connectome, unpaired, receptors),
     }
-    record = {k: mb[k.lower()] for k in readout}
+    record = _populations(connectome, readout)
+    missing = [k for k in readout if k not in record]
 
     def probe() -> pd.DataFrame:
         rows = {}
@@ -239,6 +333,8 @@ def differential_conditioning(
     after = probe()
 
     notes = []
+    if missing:
+        notes.append(f"readout populations absent from this connectome: {missing}")
     if overlap > 0.5:
         notes.append(
             f"the two odours share {overlap:.0%} of their Kenyon cells, so nothing "

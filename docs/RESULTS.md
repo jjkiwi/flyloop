@@ -767,3 +767,95 @@ the output and more of its cells depressed by A's pairing.
 - Read the descending neurons the MBONs actually reach (DNp52, DNg104, DNa03 —
   not DNa02) and ask whether the depression changes their output, which would
   connect conditioning to behaviour rather than stopping at the MBON.
+
+---
+
+## Run 8 — does the learning reach behaviour? No, and the reason is structural
+
+**Date** 2026-09-15
+**Data, model** MaleCNS v1.0, input-proportion weights, rate model, KC slope 0.35.
+**Question** Run 7 showed dopamine depresses the KC→MBON synapse in an
+odour-specific way. Does that change reach the descending neurons — the only
+cells that can move the animal?
+
+The readout was extended from the mushroom body to the eight descending neuron
+types MBONs actually project to, and conditioning was run in both directions so
+the same odour could be compared rewarded against unrewarded.
+
+### The answer
+
+Change in peak activation for odour A, rewarded versus not:
+
+| population | A rewarded | A not rewarded | within-odour effect | dopamine off |
+|---|---:|---:|---:|---:|
+| **MBON** | −0.007565 | −0.005829 | **−0.001736** | 0.0 |
+| DNg104 | −0.000227 | −0.000180 | −0.000047 | 0.0 |
+| DNp42 | −0.000016 | −0.000025 | +0.000009 | 0.0 |
+| DNge138 | +0.000045 | +0.000044 | +0.000001 | 0.0 |
+| DNp52, DNge151, DNg34, DNge150, DNa03 | 0.000000 | 0.000000 | **0.000000** | 0.0 |
+
+**The learning stops at the mushroom body.** The largest descending effect is
+3% of the MBON effect, on a neuron whose absolute response is 0.007, and five of
+the eight do not move at all. With dopamine off every number is exactly zero, so
+the MBON effect is real and reward-driven — it simply goes nowhere.
+
+### Why: learning and output are handled by different MBONs
+
+Per MBON type, the Kenyon cell input it receives (where plasticity acts) against
+its output onto descending neurons (what could change behaviour):
+
+| MBON | KC input | descending output |
+|---|---:|---:|
+| MBON14 | **3.54** | **0.0000** |
+| MBON09 | 3.53 | 0.0044 |
+| MBON07 | 3.39 | 0.0001 |
+| MBON12 | 3.24 | 0.0010 |
+| … | | |
+| MBON33 | 0.32 | **0.3620** |
+| MBON20 | 0.77 | 0.1040 |
+| MBON35 | 0.19 | 0.1018 |
+
+The two quantities are **anticorrelated, r = −0.42**. Only 12 of 97 MBONs drive
+descending neurons at all, and they are not the ones the plasticity lands on.
+The cell with the most Kenyon cell input has exactly zero descending output.
+
+**And it is not a path-length problem.** The learning-site MBONs sit one or two
+hops from a descending neuron; the connections exist and are negligible. Adding
+hops would not help.
+
+### What this means
+
+In the animal, the learned valence of an odour is read out by the **MBON
+ensemble as a whole** — the balance across compartments, shaped by MBON-to-MBON
+interactions — rather than by reading the cells the plasticity lands on. A
+feedforward model that weights every edge by input proportion propagates the
+strong direct paths and loses exactly that kind of distributed, balance-based
+readout.
+
+So this is a statement about the model class as much as about the connectome:
+**dopamine-gated plasticity at the right synapse, with the right sparse code,
+still does not produce a behavioural change, because the readout the animal uses
+is not the one a feedforward proportional model computes.**
+
+That is the third time in this project the same lesson has appeared in a
+different form: Run 4 (inhibition is mute without baseline activity), Run 5 (a
+convergent pathway needs proportional weighting), and now this. Each is a place
+where the connectome is necessary and not sufficient.
+
+### Caveats
+
+- One odour pair, one seed. The A/B asymmetry from Run 7 persists: odour B shows
+  no learning at the MBON either, so its descending numbers say nothing.
+- The rewired control remains uninformative for conditioning, as Run 7 stated.
+- DNge151 changes by −0.0101 for odour B, but identically whether B was rewarded
+  or not — odour-driven, not reward-driven. The within-odour comparison is what
+  catches that; the naive before/after difference would have reported it as a
+  large learning effect.
+
+### Next
+
+- Model the MBON ensemble readout explicitly: the difference between
+  approach-promoting and avoidance-promoting compartments, rather than a mean
+  over 97 cells.
+- Or accept the boundary and report it: this is where a connectome-derived
+  feedforward model stops, and it stops for a reason that can be stated.

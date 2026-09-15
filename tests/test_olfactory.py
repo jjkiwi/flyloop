@@ -168,3 +168,85 @@ def test_within_odour_effect_is_zero_without_learning():
 
     flat = _result(-0.004, -0.004)
     assert within_odour_effect(flat, flat) == pytest.approx(0.0)
+
+
+def test_mbon_targets_are_descending_neurons_only():
+    """The readout has to find where MBON output goes, not where vision goes."""
+    from flyloop.experiments.olfactory import mbon_targets
+
+    rows = [
+        {"id": 0, "type": "MBON01", "nt": "glutamate", "side": "R",
+         "super_class": "central"},
+        {"id": 1, "type": "DNp52", "nt": "acetylcholine", "side": "R",
+         "super_class": "descending_neuron"},
+        {"id": 2, "type": "DNa02", "nt": "acetylcholine", "side": "R",
+         "super_class": "descending_neuron"},
+        {"id": 3, "type": "SomeInterneuron", "nt": "gaba", "side": "R",
+         "super_class": "cb_intrinsic"},
+    ]
+    dense = np.zeros((4, 4), dtype=np.float32)
+    dense[0, 1] = 0.5   # MBON -> DNp52, strong
+    dense[0, 2] = 0.01  # MBON -> DNa02, weak
+    dense[0, 3] = 0.9   # MBON -> interneuron, strongest but not descending
+    c = Connectome(
+        pd.DataFrame(rows), sp.csr_matrix(dense), name="t",
+        meta={"matrix_kind": "inprop"},
+    )
+    targets = mbon_targets(c, n=5)
+    assert targets[0] == "DNp52", "strongest descending target must come first"
+    assert "SomeInterneuron" not in targets
+    assert "DNa02" in targets and targets.index("DNa02") > targets.index("DNp52")
+
+
+def test_readout_accepts_arbitrary_cell_types():
+    from flyloop.experiments.olfactory import _populations
+
+    c = _mb_connectome()
+    pops = _populations(c, ("KC", "MBON", "MBON01", "NoSuchType"))
+    assert set(pops) == {"KC", "MBON", "MBON01"}
+    assert len(pops["MBON01"]) == 1
+    assert "NoSuchType" not in pops, "absent types are dropped, not faked"
+
+
+def test_mbon_learning_and_output_are_reported_separately():
+    """Plasticity acts where KC input lands; behaviour needs descending output.
+
+    On MaleCNS those are different MBONs (r = -0.42), which is why olfactory
+    conditioning stops at the mushroom body. The helper has to keep the two
+    quantities apart rather than summarising them into one score.
+    """
+    from flyloop.experiments.olfactory import mbon_learning_vs_output
+
+    rows = [
+        {"id": 0, "type": "KCg", "nt": "acetylcholine", "side": "R",
+         "super_class": "cb_intrinsic"},
+        {"id": 1, "type": "MBON14", "nt": "glutamate", "side": "R",
+         "super_class": "central"},
+        {"id": 2, "type": "MBON33", "nt": "acetylcholine", "side": "R",
+         "super_class": "central"},
+        {"id": 3, "type": "DNp52", "nt": "acetylcholine", "side": "R",
+         "super_class": "descending_neuron"},
+    ]
+    dense = np.zeros((4, 4), dtype=np.float32)
+    dense[0, 1] = 0.9   # KC -> MBON14: learns a lot
+    dense[0, 2] = 0.1   # KC -> MBON33: learns little
+    dense[2, 3] = 0.5   # MBON33 -> DN: drives behaviour
+    c = Connectome(
+        pd.DataFrame(rows), sp.csr_matrix(dense), name="t",
+        meta={"matrix_kind": "inprop"},
+    )
+    t = mbon_learning_vs_output(c)
+    assert t.loc["MBON14", "kc_input"] > t.loc["MBON33", "kc_input"]
+    assert t.loc["MBON14", "dn_output"] == 0.0
+    assert t.loc["MBON33", "dn_output"] > 0.0
+
+
+def test_mbon_analysis_is_empty_without_a_mushroom_body():
+    from flyloop.experiments.olfactory import mbon_learning_vs_output
+
+    c = Connectome(
+        pd.DataFrame({"id": [0], "type": ["ORN_DM1"], "nt": ["acetylcholine"],
+                      "side": ["R"]}),
+        sp.csr_matrix((1, 1)), name="t", meta={"matrix_kind": "inprop"},
+    )
+    assert mbon_learning_vs_output(c).empty
