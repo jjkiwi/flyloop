@@ -114,6 +114,36 @@ def cmd_activation(args) -> int:
     return 0
 
 
+def cmd_sweep(args) -> int:
+    from .connectome.controls import rewire_degree_preserving
+    from .experiments import recruitment_sweep
+
+    c = _load(args)
+    print(c)
+    rates = tuple(float(r) for r in args.rates.split(",")) if args.rates else None
+    seeds = tuple(range(args.seeds))
+    graphs = [("original", c)]
+    if args.control:
+        graphs.append(("rewired", rewire_degree_preserving(c, seed=args.seed)))
+
+    kw = dict(drive=args.drive, side=args.side, duration=args.duration, seeds=seeds)
+    if rates:
+        kw["rates"] = rates
+    for name, graph in graphs:
+        sweep = recruitment_sweep(
+            graph, graph_name=name, progress=args.verbose, **kw
+        )
+        print()
+        print(sweep.report(criterion=args.criterion))
+        if args.out:
+            out = Path(args.out)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            path = out.with_name(f"{out.stem}_{name}{out.suffix or '.csv'}")
+            sweep.rates.to_csv(path)
+            print(f"  wrote {path}")
+    return 0
+
+
 def cmd_controls(args) -> int:
     from .experiments import looming_with_controls
 
@@ -227,6 +257,19 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--top", type=int, default=10)
     p.add_argument("--out", help="write the comparison table CSV here")
     p.set_defaults(func=cmd_activation)
+
+    p = sub.add_parser(
+        "sweep", help="how hard must a population be driven before each target joins"
+    )
+    p.add_argument("--drive", default="LC4")
+    p.add_argument("--side", default="L", choices=("L", "R", "both"))
+    p.add_argument("--rates", help="comma-separated drive rates in Hz")
+    p.add_argument("--seeds", type=int, default=3, help="repeats per drive rate")
+    p.add_argument("--duration", type=float, default=0.2)
+    p.add_argument("--criterion", type=float, default=5.0, help="recruited above this Hz")
+    p.add_argument("--control", action="store_true", help="also sweep a rewired graph")
+    p.add_argument("--out", help="write per-graph CSVs based on this path")
+    p.set_defaults(func=cmd_sweep)
 
     p = sub.add_parser(
         "controls", help="looming experiment vs shuffled/relabelled control graphs"

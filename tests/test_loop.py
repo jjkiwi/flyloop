@@ -105,3 +105,86 @@ def test_baseline_also_discriminates_but_reacts_much_earlier():
 def test_cluttered_arena_is_reproducible():
     a, b = cluttered_arena(seed=7), cluttered_arena(seed=7)
     assert [p.x for p in a.pillars] == [p.x for p in b.pillars]
+
+
+def test_activation_drives_a_population_and_reads_the_rest(cx):
+    from flyloop.experiments import activation_experiment
+
+    res = activation_experiment(cx, drive="LC4", side="L", rate_hz=100.0, duration=0.05)
+    assert res.total_spikes > 0
+    assert res.rates["DNp04_L"] > 0
+
+
+def test_activation_is_lateralised(cx):
+    from flyloop.experiments import activation_experiment
+
+    left = activation_experiment(cx, drive="LC4", side="L", rate_hz=100.0, duration=0.1)
+    assert left.rates["DNp04_L"] > left.rates["DNp04_R"]
+
+
+def test_activation_rejects_an_absent_population(cx):
+    from flyloop.experiments import activation_experiment
+
+    with pytest.raises(KeyError, match="NoSuchCell"):
+        activation_experiment(cx, drive="NoSuchCell", duration=0.01)
+
+
+def test_activation_flags_a_silent_network(cx):
+    from flyloop.brain.lif import LIFParams
+    from flyloop.experiments import activation_experiment
+
+    res = activation_experiment(
+        cx, drive="LC4", side="L", rate_hz=1.0, duration=0.02,
+        params=LIFParams(w_syn=1e-12, poisson_gain=1e-6),
+    )
+    assert any("never spiked" in n for n in res.notes)
+
+
+def test_sweep_reports_a_recruitment_threshold(cx):
+    from flyloop.experiments import recruitment_sweep
+
+    s = recruitment_sweep(
+        cx, drive="LC4", side="L", rates=(10.0, 100.0), seeds=(0,), duration=0.05
+    )
+    th = s.thresholds(criterion=5.0)
+    assert s.rates.shape[0] == 2
+    # A population recruited at the low rate must not be listed at the high one.
+    assert th["DNp04_L"] in (10.0, 100.0)
+
+
+def test_sweep_marks_never_recruited_populations_as_nan(cx):
+    import numpy as np
+
+    from flyloop.experiments import recruitment_sweep
+
+    s = recruitment_sweep(
+        cx, drive="LC4", side="L", rates=(10.0,), seeds=(0,), duration=0.05
+    )
+    th = s.thresholds(criterion=1e9)  # nothing can exceed this
+    assert np.isnan(th).all()
+
+
+def test_sweep_records_seed_spread(cx):
+    from flyloop.experiments import recruitment_sweep
+
+    s = recruitment_sweep(
+        cx, drive="LC4", side="L", rates=(20.0, 100.0), seeds=(0, 1, 2), duration=0.05
+    )
+    assert set(s.variability.index) == {20.0, 100.0}
+    assert (s.variability >= 1.0).all(), "spread is a max/min ratio"
+
+
+def test_unreliable_rates_are_excluded_from_thresholds(cx):
+    """A rate whose seed spread is large must not set a recruitment threshold."""
+    from flyloop.experiments import recruitment_sweep
+
+    s = recruitment_sweep(
+        cx, drive="LC4", side="L", rates=(10.0, 100.0), seeds=(0,), duration=0.05
+    )
+    # Force the low rate to look unreliable, as it genuinely is on real data.
+    s.unreliable = (10.0,)
+    kept = s.thresholds(criterion=5.0)
+    dropped = s.thresholds(criterion=5.0, skip_unreliable=False)
+    assert (kept.dropna() >= 100.0).all()
+    assert s.report().count("too variable") == 1
+    assert len(dropped.dropna()) >= len(kept.dropna())
