@@ -1040,3 +1040,94 @@ number alone describes the behaviour.
 - Longer episodes, to ask whether it reaches the target or orbits it.
 - The `relabel_neurons` and `scramble_signs` controls, which this run skipped for
   time — each mirror pair costs 11 minutes of wall clock.
+
+## Run 11 — where in the animal the decision actually lives
+
+**Date** 2026-09-15
+**Data, model** MaleCNS v1.0, input-proportion weights, rate model, 5 hops.
+**Question** Run 10 showed the readout steers a physical fly. Which neurons, and
+where in the animal, carry the part of the signal that decides *which way*?
+
+### Method, and why it is a difference
+
+The prepared files carry one spatial number per neuron — `somaLocation`, the
+cell body's position — for 138,496 of 161,429 cells (85.8%). There are no
+skeletons in them and neuPrint and Codex are both unreachable from here, so
+what can be drawn is a cloud of cell bodies, not morphology.
+
+The highlight is not an activation but a **difference**: activation with the
+object 35° to the right minus activation with its mirror image 35° to the left.
+This is the per-neuron form of Run 10's mirror pair, and it is the same argument.
+A cell that responds equally to both is reporting *that an object exists*; only
+a cell whose response flips carries *which way to turn*.
+
+### The decision narrows by an order of magnitude
+
+Mean |lateralisation| among cells that respond at all:
+
+| stage | mean \|lateralisation\| | responding cells |
+|---|---:|---:|
+| optic lobe | 0.248 | 22,792 |
+| visual projection | 0.146 | 5,461 |
+| central brain | 0.078 | 9,754 |
+| **descending** | **0.045** | **631** |
+| nerve cord | 0.021 | 2,298 |
+
+41,377 neurons respond to the stimulus; side information is strong at the retina
+and has fallen 5.5× by the time it reaches the descending neurons. That is not a
+loss — it is the funnel the animal has to build, since 22,792 optic lobe cells
+cannot each issue a motor command. But it does set the scale of everything this
+project measures downstream: the steering command is a small difference riding
+on a much larger common signal, which is exactly what Run 10 saw when a
+commanded turn of 0.050 produced 37.7° of heading.
+
+### The cell types it picks out were not chosen by us
+
+The most lateralised types, ranked by mean |lateralisation|:
+
+| type | mean \|lat\| |
+|---|---:|
+| PVLP025, CB1099 | 0.644 |
+| PVLP097 | 0.610 |
+| PVLP111 | 0.602 |
+| PVLP078 | 0.596 |
+| **DNp04** | **0.554** |
+
+PVLP is the posterior ventrolateral protocerebrum — where LC4 and LPLC2
+terminate, the object and looming pathway. Nothing in the analysis knows that;
+the ranking comes from the signed connectome and the stimulus alone.
+
+**DNp04 is the interesting one.** It is the highest-ranked descending neuron,
+and it is the same cell the ommatid project measured as carrying the looming
+signal on real MaleCNS wiring when the textbook choice, DNp01, sat at 0 Hz in
+all 210 trials. Two independent routes to the same unexpected neuron.
+
+Along the pathway the gradient is orderly: L1 (lamina) ±0.10, T5a ±0.134,
+LC4 ±0.17, LPLC2 ±0.24, DNp01 ±0.23, **DNa02 −0.065 / +0.083** — the steering
+neuron this project reads, right-preferring on the right side. MDN, which drives
+backward walking, sits at ≈0 on both sides: not lateralised, which is correct,
+because backing up is not a steering decision.
+
+### What this does not show
+
+- **These are cell bodies, not neurites.** Somata sit on the rind around the
+  neuropil, so the picture is a shell. It is not the morphology render it
+  resembles, and it says nothing about where a neuron's processes go.
+- **14% of neurons have no located soma** and are simply absent from the figure,
+  including some that respond.
+- The rate model is quasi-static and the activation is its peak over 5 hops, so
+  "responds" means "receives signal within 5 synapses", not a measured firing
+  rate.
+- Superclass is the dataset's own label; the stage table inherits whatever is
+  wrong with it.
+- One bearing, one object size, no control graph. A rewired control would show
+  whether the *spatial* organisation of the highlight is wiring-specific; the
+  funnel's shape probably is not, since it partly reflects how many cells each
+  stage has.
+
+### Next
+
+- The same map on a rewired graph, to separate "this is what the wiring does"
+  from "this is what any funnel-shaped network does".
+- Highlight the reward pathway the same way, using the PAM cluster rather than a
+  visual stimulus.

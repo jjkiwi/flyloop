@@ -28,6 +28,12 @@ def _write_dataset(folder, *, prefix="mini", ad_only=False, with_sign=True):
             "superclass": ["visual_projection", "descending_neuron", "cb", "ol_sensory"],
             "assignedOlHex1": [np.nan, np.nan, np.nan, 3.0],
             "assignedOlHex2": [np.nan, np.nan, np.nan, 4.0],
+            # Bracketed voxel coordinates, exactly as the real files store them.
+            # The third is deliberately absent: 14% of MaleCNS has no located
+            # soma and those rows must survive as NaN, not vanish.
+            "somaLocation": [
+                "[10 20 30]", "[40 50 60]", np.nan, "[70 80 90]",
+            ],
             # The datasets' own rule: glutamate and GABA negative, rest positive.
             "sign": [1, 1, -1, 1],
             "idx": [0, 1, 2, 3],

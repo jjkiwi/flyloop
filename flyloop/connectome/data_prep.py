@@ -49,7 +49,14 @@ COLUMN_MAP = {
     "assignedOlHex1": "hex1",
     "assignedOlHex2": "hex2",
     "sign": "dataset_sign",
+    "somaLocation": "soma",
 }
+
+#: Soma coordinates arrive as a bracketed string, "[37124 22258 36274]", in the
+#: dataset's own voxel space. They are the only spatial information these files
+#: carry -- there are no skeletons, so anything drawn from them is a cloud of
+#: cell bodies, not morphology.
+SOMA_COLUMNS = ("soma_x", "soma_y", "soma_z")
 
 #: Folder name inside ``data/`` for each dataset this loader knows about.
 DATASET_FOLDERS = {
@@ -145,6 +152,25 @@ def sign_report(meta: pd.DataFrame) -> pd.DataFrame:
     return out.reset_index(drop=True)
 
 
+
+def parse_soma(values: pd.Series) -> np.ndarray:
+    """Turn ``"[37124 22258 36274]"`` strings into an ``(n, 3)`` float array.
+
+    Neurons without a located soma -- about 14% of MaleCNS, mostly fragments and
+    cells whose cell body was never assigned -- come back as NaN rather than
+    being dropped, so the array stays aligned with the connectivity matrix.
+    """
+    out = np.full((len(values), 3), np.nan, dtype=np.float64)
+    text = values.astype("string")
+    ok = text.notna().to_numpy()
+    if not ok.any():
+        return out
+    cleaned = text[ok].str.strip().str.strip("[]").str.split()
+    good = cleaned.str.len() == 3
+    rows = np.flatnonzero(ok)[good.to_numpy()]
+    out[rows] = np.asarray(cleaned[good].tolist(), dtype=np.float64)
+    return out
+
 def load_prepared(
     folder: str | Path,
     *,
@@ -195,6 +221,10 @@ def load_prepared(
     for col in ("type", "nt", "side", "super_class"):
         if col in neurons:
             neurons[col] = neurons[col].fillna("unknown").astype(str)
+    if "soma" in neurons:
+        xyz = parse_soma(neurons.pop("soma"))
+        for i, col in enumerate(SOMA_COLUMNS):
+            neurons[col] = xyz[:, i]
 
     W = sp.load_npz(files.matrix).tocoo()
     if W.shape[0] != len(neurons):

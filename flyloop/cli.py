@@ -14,9 +14,16 @@ def _load(args) -> object:
     if getattr(args, "data_root", None):
         from .connectome.data_prep import load_dataset
 
+        # The rate model rejects raw synapse counts, so the commands that use it
+        # ask for input proportions. Without this every one of them failed on
+        # real data with "expects input-proportion weights". An explicit
+        # --matrix still wins: a subparser default would silently override the
+        # flag the user typed, which is worse than the error they asked for.
+        default = "inprop" if getattr(args, "rate_model", False) else "syncount"
         return load_dataset(
             args.data_root,
             args.dataset,
+            matrix=getattr(args, "matrix", None) or default,
             min_synapses=args.min_synapses,
             sign_source=args.sign_source,
         )
@@ -209,6 +216,53 @@ def cmd_embodied(args) -> int:
     return 0
 
 
+#: Stages a visual decision passes through, for `flyloop atlas`.
+_ATLAS_STAGES = (
+    ("optic lobe", ("ol_intrinsic", "ol_sensory")),
+    ("visual projection", ("visual_projection", "visual_centrifugal")),
+    ("central brain", ("cb_intrinsic", "cb_sensory")),
+    ("descending", ("descending_neuron",)),
+    ("nerve cord", ("vnc_intrinsic", "vnc_motor")),
+)
+
+
+def cmd_atlas(args) -> int:
+    import numpy as np
+    import pandas as pd
+
+    from .viz import Atlas, lateralised_activation
+
+    c = _load(args)
+    print(c)
+    atlas = Atlas.from_connectome(c)
+    print(" ", atlas.report())
+
+    df = lateralised_activation(c, bearing_deg=args.bearing)
+    lat, resp = df["lateralised"].to_numpy(), df["both"].to_numpy() > 0
+    print(
+        f"\nObject at {args.bearing:+.0f} deg against its mirror image at "
+        f"{-args.bearing:+.0f} deg.\n{resp.sum():,} neurons respond at all; the "
+        "difference between the two is what encodes which way to turn.\n"
+    )
+    sc = c.neurons["super_class"].to_numpy()
+    for label, classes in _ATLAS_STAGES:
+        m = np.isin(sc, classes) & resp
+        if m.any():
+            print(
+                f"  {label:20s} {np.abs(lat[m]).mean():.3f}   ({int(m.sum()):,} cells)"
+            )
+    print("\n  most lateralised cell types:")
+    types = c.neurons["type"].astype(str).to_numpy()
+    by_type = pd.Series(np.abs(lat)).groupby(types).mean().sort_values(ascending=False)
+    for name, v in by_type.head(8).items():
+        print(f"    {str(name):12s} {v:.3f}")
+    if args.out:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(args.out, index=False)
+        print(f"\n  wrote {args.out}")
+    return 0
+
+
 def cmd_controls(args) -> int:
     from .experiments import looming_with_controls
 
@@ -287,6 +341,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dataset", default="malecns", help="dataset name under --data-root")
     ap.add_argument("--min-synapses", type=int, default=5)
     ap.add_argument(
+        "--matrix", choices=("syncount", "inprop", "outprop"), default=None,
+        help="weighting to load; rate-model commands default to inprop",
+    )
+    ap.add_argument(
         "--sign-source", default="flyloop", choices=("flyloop", "dataset"),
         help="whose neurotransmitter signs to use; they differ on ~5%% of neurons",
     )
@@ -346,7 +404,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--learning-rate", type=float, default=0.05)
     p.add_argument("--no-dopamine", action="store_true")
     p.add_argument("--out", help="write the per-step log CSV here")
-    p.set_defaults(func=cmd_approach)
+    p.set_defaults(func=cmd_approach, rate_model=True)
 
     p = sub.add_parser("embodied", help="drive NeuroMechFly with the same descending readout")
     p.add_argument("--steps", type=int, default=30, help="control steps per episode")
@@ -354,7 +412,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--bearing", type=float, default=35.0, help="target bearing, degrees")
     p.add_argument("--control", action="store_true", help="also run a rewired graph")
     p.add_argument("--out", help="write per-graph CSVs based on this path")
-    p.set_defaults(func=cmd_embodied)
+    p.set_defaults(func=cmd_embodied, rate_model=True)
+
+    p = sub.add_parser("atlas", help="where the deciding neurons are in the animal")
+    p.add_argument("--bearing", type=float, default=35.0, help="object bearing, degrees")
+    p.add_argument("--out", help="write the per-neuron activation CSV here")
+    p.set_defaults(func=cmd_atlas, rate_model=True)
 
     p = sub.add_parser(
         "controls", help="looming experiment vs shuffled/relabelled control graphs"

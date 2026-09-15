@@ -52,3 +52,26 @@ The bearing panel folds left-target episodes onto the right before averaging.
 That is only legitimate because the design is a mirror pair by construction —
 the two episodes share a body seed and differ solely in the sign of the
 stimulus. Do not reuse that fold on data that is not paired.
+
+## The atlas figures
+
+`atlas.png` and `atlas_body.png` come from the same script:
+
+```bash
+flyloop --data-root ~/connectome_data_prep atlas --out docs/figures/atlas/lateralised.csv
+python docs/figures/plot_atlas.py
+```
+
+The CLI command prints the stage table and the ranked cell types; the script
+draws them. `atlas/lateralised.csv` is the cache — delete it to recompute (about
+20 s of rate model).
+
+Two things about the drawing that are not style choices:
+
+- **The context cloud is deliberately bright enough to see.** In the side view
+  the whole point is that the nerve cord is *present and quiet*. Rendered too
+  dark it reads as empty canvas, which is a different and wrong claim.
+- **The side view is a separate file.** The central nervous system is about
+  twice as long as it is tall; squeezed into a row of the composite it shrank to
+  a thumbnail floating in dead space. It gets its own panel at its own aspect
+  rather than being distorted to fit.

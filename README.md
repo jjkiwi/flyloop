@@ -162,6 +162,32 @@ The connectome supplies a direction and the body supplies the gain: a commanded
 turn of 0.050 — 5% of the controller's range — becomes 37.7° of heading once the
 gait integrates it. The fly aims in 0.8 s and holds; in 1.5 s it does not arrive.
 
+## It shows you which neurons decided
+
+```bash
+flyloop --data-root ~/connectome_data_prep atlas
+python docs/figures/plot_atlas.py
+```
+
+![the atlas](docs/figures/atlas.png)
+
+138,496 cell bodies in the animal's own coordinates, with the cells that decide
+*which way to turn* lit up. The highlight is a **difference** — activation with
+the object 35° to the right minus its mirror image on the left — because a
+neuron that answers both equally is reporting that an object exists, not which
+way to go. Same argument as Run 10's mirror pair, one neuron at a time.
+
+Side information is strong at the retina and 5.5× weaker by the descending
+neurons (0.248 → 0.045), which is the funnel the animal has to build: 22,792
+optic lobe cells cannot each issue a motor command. The ranking picks out PVLP
+types — where LC4 and LPLC2 terminate — and **DNp04**, the same unexpected
+descending neuron the ommatid project measured carrying looming while the
+textbook DNp01 sat silent. Nothing in the analysis was told any of that.
+
+**These are cell bodies, not neurites.** The prepared files contain no
+skeletons, and neuPrint and Codex are unreachable from here, so this is not the
+morphology render it resembles: somata sit on the rind around the neuropil.
+
 ## Quick start
 
 ```bash

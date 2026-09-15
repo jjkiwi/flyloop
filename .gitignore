@@ -8,3 +8,7 @@ out/
 *.npz
 *.parquet
 .ruff_cache/
+
+# Derived cache for the atlas figure: 3.5 MB of per-neuron activation that
+# `flyloop atlas` regenerates in about 20 seconds.
+docs/figures/atlas/
