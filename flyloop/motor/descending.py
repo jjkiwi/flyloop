@@ -6,6 +6,20 @@ makes them the natural API of the animal:
 
     DNa01           forward walking / speed
     DNa02           steering; the left-right difference sets turn direction
+
+**The DNa02 readout is not this project's guess.** Rayshubskiy, Holtz & Wilson
+(*eLife* 102230; first posted as bioRxiv 2020.04.04.024703) record from both
+copies of DNa02 at once and report that the fly's rotational velocity is
+*linearly proportional to the right-left difference in DNa02 activity* -- a
+"see-saw", where excitation of one copy comes with inhibition of its
+contralateral twin. ``turn = DNa02_R - DNa02_L`` is that relationship, with the
+same functional form, so the readout is taken from the literature rather than
+fitted here.
+
+Two limits of leaning on it. DNa02 sits below DNa03 and LAL013 in the steering
+hierarchy (Westeinde et al.), so reading DNa02 alone reads one level of a stack;
+and Yang et al. (*Cell* 2024) describe finer structure -- DNa02 shortens strides
+on the inside of a turn -- that a scalar turn command cannot express.
     MDN             backward walking
     DNp09           stopping and freezing
     DNp01 ("GF")    the giant fibre; classically, one spike triggers escape

@@ -15,6 +15,23 @@ connectome says so:
   all to DNa01 or DNp09. So there is exactly one junction where a learned
   valence can reach steering, and this module is built on it.
 
+**The published anatomy agrees, in a way we did not arrange.** Li et al.
+(*eLife* 2020;9:e62576) report that DNa02 receives direct mushroom body input
+from MBON32 and MBON31. Measured here without reference to that paper, those
+two types supply 0.279% and 0.219% of DNa02's input -- 0.498% of the 0.526%
+total, so **95% of all MBON input to DNa02 comes from exactly the two cell types
+the literature names**.
+
+**And one place we are knowingly short.** The same paper describes the *main*
+route from mushroom body to steering as indirect, through DNa03. This
+connectome agrees that the indirect leg is the stronger one: MBON -> DNa03 is
+1.96%, nearly four times the direct MBON -> DNa02 of 0.53%, with DNa03 -> DNa02
+at 1.16%. The coupling here uses only the direct connection, so ``share`` is a
+**lower bound** on the true influence, and every "how much gain would it take"
+figure derived from it is correspondingly an upper bound. Routing through DNa03
+would cut those figures by a factor of a few -- not by the orders of magnitude
+that would change the conclusion.
+
 So the hybrid is the arrangement the animal actually has: the odour says
 *whether* to approach, the sight says *which way*. The mushroom body does not
 generate a steering command; it biases one that already exists.

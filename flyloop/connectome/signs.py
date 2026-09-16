@@ -9,6 +9,17 @@ reimplementations get this backwards and treat glutamate as excitatory; the
 network then runs away into saturation and the authors compensate by tuning the
 readout until something moves.  Do not do that.
 
+The measurement is Liu & Wilson, *PNAS* 2013;110:10294-10299, "Glutamate is an
+inhibitory neurotransmitter in the Drosophila olfactory system": iontophoresed
+glutamate hyperpolarises every major antennal-lobe cell type, and the effect is
+abolished by RNAi knockdown of GluCl-alpha.  (Widely miscited as Nature
+Neuroscience; it is PNAS.)
+
+**Where the confusion comes from.** At the larval neuromuscular junction
+glutamate *is* excitatory, through GluRII receptors.  A reimplementation that
+flips the sign is usually importing the neuromuscular fact into the adult
+central brain, where it does not hold.  This table is about the central brain.
+
 Neuromodulators (dopamine, octopamine, serotonin) are assigned sign 0: the LIF
 model of Shiu et al. has no mechanism for them, so pretending they are fast
 excitation would be worse than leaving them out.  Their absence is a stated
