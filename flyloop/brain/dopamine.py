@@ -60,9 +60,7 @@ def dopaminergic(
     return rows
 
 
-def proximity_reward(
-    distance: float, *, scale: float = 1.0, floor: float = 0.0
-) -> float:
+def proximity_reward(distance: float, *, scale: float = 1.0, floor: float = 0.0) -> float:
     """Reward in [0, 1] that grows as the target gets closer.
 
     An exponential in distance rather than an inverse, so it is bounded, smooth,
@@ -103,9 +101,21 @@ class MushroomBodyPlasticity:
     def attach(self, values) -> None:
         self._values = values
 
+    @staticmethod
+    def _array(values) -> np.ndarray:
+        """Read a weight buffer as numpy, whether it is torch's or scipy's.
+
+        The rate model has two backends -- PyTorch via ``RateBrain`` and scipy
+        via ``FastRateBrain`` -- and the learning rule has to edit either in
+        place without caring which it was handed.
+        """
+        return (
+            values.detach().cpu().numpy() if hasattr(values, "detach") else np.asarray(values)
+        )
+
     @property
     def _current(self) -> np.ndarray:
-        return self._values[self.entry_index].detach().cpu().numpy()
+        return self._array(self._values[self.entry_index])
 
     def step(self, kc_activity: np.ndarray, dopamine: float) -> float:
         """Apply one learning step and return the resulting depression.
@@ -123,22 +133,26 @@ class MushroomBodyPlasticity:
         if self.n_synapses == 0 or dopamine <= 0:
             self.history.append(self.depression())
             return self.history[-1]
-        import torch
 
         act = np.clip(kc_activity[self.entry_pre], 0.0, 1.0)
-        factor = 1.0 - self.learning_rate * dopamine * act
-        with torch.no_grad():
-            idx = torch.from_numpy(self.entry_index)
-            cur = self._values[idx]
-            floor = torch.from_numpy(self.initial * self.min_fraction).to(cur.dtype)
-            new = cur * torch.from_numpy(factor.astype(np.float32))
-            # Depression only, and never past the floor.
-            keep = torch.where(
-                torch.abs(new) < torch.abs(floor), floor, new
-            )
-            self._values[idx] = keep
+        factor = (1.0 - self.learning_rate * dopamine * act).astype(np.float32)
+        floor = (self.initial * self.min_fraction).astype(np.float32)
+        new = self._current * factor
+        # Depression only, and never past the floor.
+        keep = np.where(np.abs(new) < np.abs(floor), floor, new)
+        self._write(keep)
         self.history.append(self.depression())
         return self.history[-1]
+
+    def _write(self, keep: np.ndarray) -> None:
+        """Put the updated weights back, in whichever buffer we were given."""
+        if hasattr(self._values, "detach"):
+            import torch
+
+            with torch.no_grad():
+                self._values[torch.from_numpy(self.entry_index)] = torch.from_numpy(keep)
+        else:
+            self._values[self.entry_index] = keep
 
 
 def mushroom_body_plasticity(
@@ -170,7 +184,8 @@ def mushroom_body_plasticity(
     is_mbon[mbon] = True
 
     # The network matrix is (post, pre): rows are targets, columns are sources.
-    idx = indices.detach().cpu().numpy()
+    # Accepts a torch index tensor or the plain array FastRateBrain hands over.
+    idx = np.asarray(indices.detach().cpu() if hasattr(indices, "detach") else indices)
     post, pre = idx[0], idx[1]
     hit = np.flatnonzero(is_mbon[post] & is_kc[pre])
     # Entries carry global neuron ids; the learning rule is handed activations
@@ -182,7 +197,7 @@ def mushroom_body_plasticity(
         mbon=mbon,
         entry_index=hit.astype(np.int64),
         entry_pre=kc_position[pre[hit]],
-        initial=values[hit].detach().cpu().numpy().astype(np.float32).copy(),
+        initial=MushroomBodyPlasticity._array(values[hit]).astype(np.float32).copy(),
         learning_rate=learning_rate,
         min_fraction=min_fraction,
     )

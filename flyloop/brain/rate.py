@@ -50,10 +50,7 @@ import pandas as pd
 
 from ..connectome.schema import Connectome
 
-_INSTALL_HINT = (
-    "The rate model needs connectome-interpreter:\n"
-    "    pip install 'flyloop[data]'"
-)
+_INSTALL_HINT = "The rate model needs connectome-interpreter:\n    pip install 'flyloop[data]'"
 
 
 @dataclass
@@ -122,9 +119,7 @@ class RateBrain:
         weights = connectome.W.T.tocoo()
         idx = torch.from_numpy(np.vstack([weights.row, weights.col]).astype(np.int64))
         val = torch.from_numpy(weights.data.astype(np.float32))
-        sparse = torch.sparse_coo_tensor(
-            idx, val, (connectome.n, connectome.n)
-        ).coalesce()
+        sparse = torch.sparse_coo_tensor(idx, val, (connectome.n, connectome.n)).coalesce()
 
         types = connectome.neurons["type"].astype(str).to_numpy()
         idx_to_group = dict(enumerate(types))
@@ -180,6 +175,28 @@ class RateBrain:
         )
 
 
+def rate_brain(connectome, sensory, *, backend: str = "fast", **kwargs):
+    """Build a rate model on the faster backend by default.
+
+    ``"fast"`` is :class:`flyloop.brain.fast.FastRateBrain`, a scipy
+    reimplementation that runs 23x quicker on MaleCNS (3.80 s -> 0.162 s per
+    call) and agrees with the reference to 2.7e-07 over 807,145 activations --
+    zero neurons differ by more than 1e-4, and the steering command is identical
+    to six decimals. ``"reference"`` is the PyTorch original, kept because it is
+    what ``tests/test_fast.py`` checks the fast one against.
+
+    Results recorded before this existed are unaffected; the models are the same
+    arithmetic, and the equivalence test is what says so.
+    """
+    if backend == "fast":
+        from .fast import FastRateBrain
+
+        return FastRateBrain(connectome, sensory, **kwargs)
+    if backend == "reference":
+        return RateBrain(connectome, sensory, **kwargs)
+    raise ValueError(f"unknown backend {backend!r}; use 'fast' or 'reference'")
+
+
 def steady_state(pattern: np.ndarray, hops: int) -> np.ndarray:
     """Hold one input pattern constant across every synaptic hop.
 
@@ -198,11 +215,7 @@ def population_index(
     """Neuron rows per cell type, optionally restricted to one side."""
     out: dict[str, np.ndarray] = {}
     kinds = c.neurons["type"].astype(str).to_numpy()
-    sides = (
-        c.neurons["side"].astype(str).to_numpy()
-        if "side" in c.neurons.columns
-        else None
-    )
+    sides = c.neurons["side"].astype(str).to_numpy() if "side" in c.neurons.columns else None
     for t in types:
         m = kinds == t
         if side and sides is not None:

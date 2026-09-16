@@ -25,7 +25,7 @@ import pandas as pd
 
 from .body.kinematic import Arena, KinematicBody, Pillar
 from .brain.dopamine import dopaminergic, proximity_reward
-from .brain.rate import RateBrain, population_index, steady_state
+from .brain.rate import population_index, rate_brain, steady_state
 from .connectome.schema import Connectome
 from .motor.descending import LocomotorCommand
 from .vision.hexproject import HexWorldView
@@ -88,6 +88,7 @@ class RateLoop:
         learning_rate: float = 0.05,
         view: HexWorldView | None = None,
         body=None,
+        backend: str = "fast",
     ):
         self.c = connectome
         self.target = target or Target()
@@ -108,11 +109,15 @@ class RateLoop:
         self._visual_slot = np.array(
             [self._pos[int(v)] for v in self.view.sensory], dtype=np.int64
         )
-        self._pam_slot = np.array(
-            [self._pos[int(v)] for v in self.pam], dtype=np.int64
-        )
+        self._pam_slot = np.array([self._pos[int(v)] for v in self.pam], dtype=np.int64)
 
-        self.brain = RateBrain(connectome, self.sensory, num_layers=hops, default_bias=bias)
+        self.brain = rate_brain(
+            connectome,
+            self.sensory,
+            backend=backend,
+            num_layers=hops,
+            default_bias=bias,
+        )
         self.plastic = self.brain.plasticity(learning_rate=learning_rate)
 
         self.record = {}
@@ -141,9 +146,7 @@ class RateLoop:
 
         v = np.zeros(len(self.sensory), dtype=np.float32)
         v[self._visual_slot] = self.view.pattern([(bearing, half_width)])
-        reward = (
-            proximity_reward(dist, scale=self.reward_scale) if self.use_dopamine else 0.0
-        )
+        reward = proximity_reward(dist, scale=self.reward_scale) if self.use_dopamine else 0.0
         v[self._pam_slot] = reward
 
         res = self.brain.run(steady_state(v, self.hops), record=self.record)

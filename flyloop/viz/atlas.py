@@ -130,11 +130,11 @@ def situation_activation(
     neuron's peak activation across the synaptic hops, which is what the
     descending readout takes elsewhere in this project.
     """
-    from ..brain.rate import RateBrain, steady_state
+    from ..brain.rate import rate_brain, steady_state
     from ..vision.hexproject import HexWorldView
 
     view = view or HexWorldView(c)
-    brain = RateBrain(c, view.sensory, num_layers=hops, default_bias=bias)
+    brain = rate_brain(c, view.sensory, num_layers=hops, default_bias=bias)
     pattern = view.pattern([(bearing_deg, half_width_deg)])
     res = brain.run(steady_state(pattern, hops))
     return res.activations.max(axis=1)
