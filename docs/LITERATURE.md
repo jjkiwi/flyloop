@@ -76,10 +76,18 @@ directly, so treat the specifics as second-hand.
 
 Two of these are worth stating plainly.
 
-**The MBON31/32 result is an independent confirmation.** Nothing in our pipeline
-knows that paper. Ranking MBON types by their input share to DNa02 puts MBON31
-and MBON32 on top, accounting for 95% of all mushroom body input to the steering
-neuron — the same two cell types the literature names.
+**The MBON31/32 result is an independent confirmation, now twice over.** Nothing
+in our pipeline knows that paper. Ranking MBON types by their input share to
+DNa02 puts MBON31 and MBON32 on top in **both** connectomes:
+
+| | MaleCNS (male) | FlyWire (female) |
+|---|---|---|
+| strongest | MBON31, 0.279% | MBON32, 0.276% |
+| second | MBON32, 0.219% | MBON31, 0.210% |
+| share of all MBON input | 98% | 99% |
+
+Li et al. name the pair from the hemibrain; two further reconstructions agree,
+with the rank order swapped and the magnitudes within 5%. See Run 14.
 
 **The indirect routes are the larger ones, but DNa03 is not their carrier.**
 `flyloop/brain/coupling.py` now traces the input backwards as well

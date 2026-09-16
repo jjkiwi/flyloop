@@ -39,12 +39,18 @@ import scipy.sparse as sp
 from .schema import Connectome
 from .signs import sign_vector
 
-#: Metadata column -> the name this project uses.
+#: Metadata column -> the name this project uses. The two datasets disagree on
+#: nearly every name: MaleCNS writes bodyid/type/somaSide, FlyWire writes
+#: root_id/cell_type/side. Both spellings map here so a caller never has to know
+#: which file it got.
 COLUMN_MAP = {
     "bodyid": "id",
+    "root_id": "id",
     "type": "type",
+    "cell_type": "type",
     "top_nt": "nt",
     "somaSide": "side",
+    "side": "side",
     "superclass": "super_class",
     "assignedOlHex1": "hex1",
     "assignedOlHex2": "hex2",
@@ -119,8 +125,7 @@ def find_files(
     chosen = next((c[0] for c in order if c), None)
     if chosen is None:
         raise FileNotFoundError(
-            f"no {matrix!r} matrix in {folder}. Found: "
-            f"{[p.name for p in folder.glob('*.npz')]}"
+            f"no {matrix!r} matrix in {folder}. Found: {[p.name for p in folder.glob('*.npz')]}"
         )
     return PreparedFiles(meta=metas[0], matrix=chosen, axon_dendrite="_ad_" in chosen.name)
 
@@ -152,6 +157,35 @@ def sign_report(meta: pd.DataFrame) -> pd.DataFrame:
     return out.reset_index(drop=True)
 
 
+def _in_matrix_order(raw: pd.DataFrame, filename: str) -> pd.DataFrame:
+    """Put the metadata in the matrix's row order, using its own ``idx`` column.
+
+    These files do not promise that the CSV rows are in matrix order, and they
+    are not. MaleCNS happens to ship sorted, ``idx`` running 0..161428; FlyWire
+    does not -- its first row is matrix row 90,908. A loader that trusts CSV
+    order therefore reads MaleCNS correctly and mislabels every neuron in
+    FlyWire, which is the worst kind of failure because nothing raises. The
+    symptom that caught it: "DNa02" appeared to draw 18% of its input from Tm3
+    and 11% from Mi1, medulla cells that cannot plausibly feed a descending
+    steering neuron, while the same query on MaleCNS returned PFL3 and the LAL
+    types the literature names.
+    """
+    if "idx" not in raw.columns:
+        return raw
+    idx = raw["idx"].to_numpy()
+    if len(np.unique(idx)) != len(idx):
+        raise ValueError(f"{filename}: 'idx' is not unique, so row order is undecidable")
+    expected = np.arange(len(raw))
+    if np.array_equal(idx, expected):
+        return raw
+    ordered = raw.sort_values("idx", kind="stable").reset_index(drop=True)
+    if not np.array_equal(ordered["idx"].to_numpy(), expected):
+        raise ValueError(
+            f"{filename}: 'idx' should be a permutation of 0..{len(raw) - 1}, "
+            f"but runs {ordered['idx'].min()}..{ordered['idx'].max()}"
+        )
+    return ordered
+
 
 def parse_soma(values: pd.Series) -> np.ndarray:
     """Turn ``"[37124 22258 36274]"`` strings into an ``(n, 3)`` float array.
@@ -170,6 +204,7 @@ def parse_soma(values: pd.Series) -> np.ndarray:
     rows = np.flatnonzero(ok)[good.to_numpy()]
     out[rows] = np.asarray(cleaned[good].tolist(), dtype=np.float64)
     return out
+
 
 def load_prepared(
     folder: str | Path,
@@ -206,13 +241,25 @@ def load_prepared(
     if sign_source not in ("flyloop", "dataset"):
         raise ValueError(f"sign_source must be 'flyloop' or 'dataset', got {sign_source!r}")
 
-    files = find_files(
-        folder, matrix=matrix, prefer_axon_dendrite=prefer_axon_dendrite
-    )
+    files = find_files(folder, matrix=matrix, prefer_axon_dendrite=prefer_axon_dendrite)
     raw = pd.read_csv(files.meta, low_memory=False)
+    raw = _in_matrix_order(raw, files.meta.name)
 
-    present = {k: v for k, v in COLUMN_MAP.items() if k in raw.columns}
-    missing = [k for k in ("bodyid", "type", "top_nt") if k not in raw.columns]
+    # Several source spellings map to the same name and a file may carry more
+    # than one of them -- MaleCNS has both `type` and `cell_type`. Keeping both
+    # produces a duplicated column, and `neurons["type"]` then returns a
+    # DataFrame instead of a Series, which fails far from here. First spelling
+    # in COLUMN_MAP order wins.
+    present, taken = {}, set()
+    for source, name in COLUMN_MAP.items():
+        if source in raw.columns and name not in taken:
+            present[source] = name
+            taken.add(name)
+    # One spelling from each group has to be present, not all of them.
+    needed = (("bodyid", "root_id"), ("type", "cell_type"), ("top_nt",))
+    missing = [
+        " or ".join(group) for group in needed if not any(k in raw.columns for k in group)
+    ]
     if missing:
         raise ValueError(
             f"{files.meta.name} is missing {missing}; columns are {list(raw.columns)[:20]}"
@@ -221,6 +268,11 @@ def load_prepared(
     for col in ("type", "nt", "side", "super_class"):
         if col in neurons:
             neurons[col] = neurons[col].fillna("unknown").astype(str)
+    if "side" in neurons:
+        # FlyWire spells the sides out; everything downstream matches on L and R.
+        neurons["side"] = neurons["side"].replace(
+            {"left": "L", "right": "R", "center": "M", "middle": "M"}
+        )
     if "soma" in neurons:
         xyz = parse_soma(neurons.pop("soma"))
         for i, col in enumerate(SOMA_COLUMNS):
@@ -266,9 +318,7 @@ def load_prepared(
     )
 
 
-def load_dataset(
-    root: str | Path, dataset: str = "malecns", **kwargs
-) -> Connectome:
+def load_dataset(root: str | Path, dataset: str = "malecns", **kwargs) -> Connectome:
     """Load by dataset name from a clone of ``connectome_data_prep``.
 
     ``root`` is either the repository root or its ``data`` directory.

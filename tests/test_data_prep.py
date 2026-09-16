@@ -32,7 +32,10 @@ def _write_dataset(folder, *, prefix="mini", ad_only=False, with_sign=True):
             # The third is deliberately absent: 14% of MaleCNS has no located
             # soma and those rows must survive as NaN, not vanish.
             "somaLocation": [
-                "[10 20 30]", "[40 50 60]", np.nan, "[70 80 90]",
+                "[10 20 30]",
+                "[40 50 60]",
+                np.nan,
+                "[70 80 90]",
             ],
             # The datasets' own rule: glutamate and GABA negative, rest positive.
             "sign": [1, 1, -1, 1],
@@ -185,3 +188,86 @@ def test_inprop_matrix_is_selected_when_asked(tmp_path):
     # min_synapses must not silently delete proportional weights below 5
     assert props.W.nnz == 1
     assert props.meta["min_synapses"] is None
+
+
+# ---------------------------------------------- metadata in matrix order
+
+
+def _shuffled_dataset(folder, *, prefix="mini"):
+    """The same miniature dataset with its CSV rows permuted.
+
+    FlyWire ships like this: the first row of its metadata is matrix row 90,908.
+    MaleCNS happens to ship sorted, which is why a loader that trusts CSV order
+    reads one dataset correctly and silently mislabels every neuron in the other.
+    """
+    _write_dataset(folder, prefix=prefix)
+    meta = pd.read_csv(folder / f"{prefix}_all_neuron_meta.csv")
+    meta = meta.iloc[[2, 0, 3, 1]].reset_index(drop=True)
+    meta.to_csv(folder / f"{prefix}_all_neuron_meta.csv", index=False)
+    return folder
+
+
+def test_rows_are_reordered_by_idx_not_trusted_from_the_csv(tmp_path):
+    folder = _shuffled_dataset(tmp_path / "shuffled")
+    c = load_prepared(folder, min_synapses=5)
+    # _write_dataset lays the types out in idx order; the shuffle must be undone.
+    assert c.neurons["type"].tolist() == ["LC4", "DNp04", "INi", "PR"]
+    assert c.neurons["id"].tolist() == [10, 20, 30, 40]
+
+
+def test_a_shuffled_load_matches_an_unshuffled_one(tmp_path):
+    """The whole point: the same data in either row order must give one graph."""
+    straight = load_prepared(_write_dataset(tmp_path / "a"), min_synapses=5)
+    shuffled = load_prepared(_shuffled_dataset(tmp_path / "b"), min_synapses=5)
+    assert shuffled.neurons["type"].tolist() == straight.neurons["type"].tolist()
+    assert (shuffled.W != straight.W).nnz == 0
+
+
+def test_a_duplicated_idx_is_refused(tmp_path):
+    folder = _write_dataset(tmp_path / "dup")
+    meta = pd.read_csv(folder / "mini_all_neuron_meta.csv")
+    meta.loc[1, "idx"] = 0
+    meta.to_csv(folder / "mini_all_neuron_meta.csv", index=False)
+    with pytest.raises(ValueError, match="not unique"):
+        load_prepared(folder, min_synapses=5)
+
+
+def test_an_idx_that_is_not_a_permutation_is_refused(tmp_path):
+    """Gaps mean the CSV is a subset of the matrix, and nothing lines up."""
+    folder = _write_dataset(tmp_path / "gappy")
+    meta = pd.read_csv(folder / "mini_all_neuron_meta.csv")
+    meta["idx"] = [0, 1, 2, 99]
+    meta.to_csv(folder / "mini_all_neuron_meta.csv", index=False)
+    with pytest.raises(ValueError, match="permutation"):
+        load_prepared(folder, min_synapses=5)
+
+
+def test_metadata_without_an_idx_column_is_left_alone(tmp_path):
+    folder = _write_dataset(tmp_path / "noidx")
+    meta = pd.read_csv(folder / "mini_all_neuron_meta.csv").drop(columns=["idx"])
+    meta.to_csv(folder / "mini_all_neuron_meta.csv", index=False)
+    assert load_prepared(folder, min_synapses=5).neurons["type"].iloc[0] == "LC4"
+
+
+def test_flywire_column_names_and_side_words_are_understood(tmp_path):
+    """FlyWire writes root_id/cell_type and spells the sides out."""
+    folder = _write_dataset(tmp_path / "fw")
+    meta = pd.read_csv(folder / "mini_all_neuron_meta.csv").rename(
+        columns={"bodyid": "root_id", "type": "cell_type", "somaSide": "side"}
+    )
+    meta["side"] = meta["side"].map({"L": "left", "R": "right"})
+    meta.to_csv(folder / "mini_all_neuron_meta.csv", index=False)
+    c = load_prepared(folder, min_synapses=5)
+    assert c.neurons["type"].tolist() == ["LC4", "DNp04", "INi", "PR"]
+    assert c.neurons["side"].tolist() == ["L", "L", "R", "R"]
+
+
+def test_two_spellings_of_one_field_do_not_become_two_columns(tmp_path):
+    """MaleCNS carries both `type` and `cell_type`; keeping both breaks lookups."""
+    folder = _write_dataset(tmp_path / "both")
+    meta = pd.read_csv(folder / "mini_all_neuron_meta.csv")
+    meta["cell_type"] = "SOMETHING ELSE"
+    meta.to_csv(folder / "mini_all_neuron_meta.csv", index=False)
+    c = load_prepared(folder, min_synapses=5)
+    assert isinstance(c.neurons["type"], pd.Series)
+    assert c.neurons["type"].iloc[0] == "LC4"

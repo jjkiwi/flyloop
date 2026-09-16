@@ -1452,3 +1452,101 @@ pathway can be checked against it rather than assumed symmetric.
 - Sweep the probe's angular size. If the linear range scales with it, the
   controller is reading angular position; if it does not, it is reading which
   columns are lit, which is a weaker claim.
+
+## Run 14 — the same structure in a second animal, after a bug that hid it
+
+**Date** 2026-09-16
+**Data** MaleCNS v1.0 (male, brain and nerve cord, CC-BY) against FlyWire v783
+(female, brain only, CC BY-NC). Different animals, different sex, different
+reconstruction teams, same input-proportion preparation.
+**Question** Runs 12 and 13 rest on structural claims about one connectome. Do
+they hold in another?
+
+### The bug first, because without it this run said the opposite
+
+The first pass reported **MBON to DNa02 of 0.0000% in FlyWire** against 0.526%
+in MaleCNS, which would have meant the junction the whole hybrid is built on is
+specific to one animal. It was not a biological difference. It was the loader.
+
+These prepared files do not promise that the metadata CSV is in matrix row
+order, and they are not consistent about it. MaleCNS ships sorted, its `idx`
+column running 0 to 161,428. **FlyWire does not: its first metadata row is
+matrix row 90,908.** A loader that trusts CSV order therefore reads one dataset
+correctly and mislabels every neuron in the other, with nothing raising.
+
+What caught it was not a test but a sanity check on the answer. The cell
+labelled DNa02 in FlyWire appeared to draw **17.8% of its input from Tm3 and
+11.5% from Mi1** -- medulla cells, which cannot plausibly feed a descending
+steering neuron -- while the identical query on MaleCNS returned PS049, PFL3 and
+the LAL types the literature names. Implausible neighbours, not a crash.
+
+`_in_matrix_order` now reorders by `idx`, refuses a duplicated or non-permuted
+one rather than guessing, and six tests pin it, including one that loads the
+same miniature dataset in two row orders and requires an identical graph.
+
+### With that fixed, the structure replicates
+
+| quantity | MaleCNS | FlyWire | |
+|---|---:|---:|---|
+| MBON → DNa02 | 0.5256% | **0.5151%** | replicates |
+| MBON → DNa03 | 1.9613% | 2.5338% | replicates |
+| MBON → DNp09 | 0.0000% | 0.0000% | replicates exactly |
+| **LC4 + LPLC2 → Kenyon cells** | **0.0000%** | **0.0000%** | replicates exactly |
+| coupling, direct | 0.5214% | 0.5131% | replicates |
+| coupling, within 4 hops | 2.1423% | 2.8876% | replicates |
+| indirect / direct ratio | 4.11× | 5.63× | replicates |
+| MBON → MDN | 0.4345% | 0.9726% | same order, 2× apart |
+
+The strongest result is the one nothing in the pipeline was told to look for:
+
+| | MaleCNS | FlyWire |
+|---|---|---|
+| strongest MBON into DNa02 | MBON31, 0.279% | MBON32, 0.276% |
+| second | MBON32, 0.219% | MBON31, 0.210% |
+| those two, as a share of all MBON input | **98%** | **99%** |
+
+**The same two cell types, at the same strengths, in two independently
+reconstructed animals**, carrying essentially all of the mushroom body's direct
+access to the steering neuron. Li et al. (*eLife* 2020;9:e62576) name MBON32 and
+MBON31 from the hemibrain; this is that result reproduced twice more, from
+matrices, with no reference to the paper. The rank order swaps between the two
+and the magnitudes differ by under 5%, which is about what two reconstructions
+of one circuit should look like.
+
+Run 12's central structural facts therefore are not artefacts of one specimen.
+Vision cannot be learned through the mushroom body in either animal -- exactly
+zero, twice -- and the learned valence reaches steering through one narrow,
+reproducible door.
+
+### What does not replicate: Run 13's lean
+
+| | MaleCNS | FlyWire |
+|---|---:|---:|
+| LC4, left/right | 71 / 55, **−12.7%** | 54 / 50, **−3.8%** |
+| LPLC2, left/right | 94 / 91, −1.6% | 108 / 102, −2.9% |
+
+The LC4 imbalance that Run 13 offered as a candidate for the 14% centre bias is
+three times smaller in FlyWire. Together with the rewired control leaning harder
+than the real graph, that settles it: **the lean is not a property of fly wiring,
+it is a property of this reconstruction and of networks of this shape.** Run 13's
+caution was warranted and can now be stated as a conclusion.
+
+### What this does not show
+
+- **No behaviour was run on FlyWire.** It has no hex retinotopy in these files,
+  so the tuning curve of Run 13 and every closed-loop result needs MaleCNS. This
+  run compares structure only.
+- **FlyWire is brain-only.** It stops at the neck, so anything about the nerve
+  cord is MaleCNS alone.
+- **Two reconstructions are not two independent measurements of nature.** They
+  share conventions, cell-type nomenclature and in places the same annotators,
+  so agreement bounds reconstruction noise better than it bounds biology.
+- The sign table was applied identically to both; a transmitter prediction wrong
+  in the same way in both files would replicate happily.
+
+### Next
+
+- The loader now reads FlyWire, so `flyloop info --dataset fafb` and the atlas
+  work on it. The obvious follow-up is the sign-source comparison across both.
+- FlyWire's own `sign` column against ours, on 139,102 neurons, as a second
+  check on the glutamate rule.
