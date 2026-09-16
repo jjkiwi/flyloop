@@ -91,6 +91,7 @@ class HybridLoop:
         bias: float = 0.0,
         turn_gain: float = 3.0,
         gain: float = 1.0,
+        coupling_hops: int = 1,
         learning_rate: float = 0.2,
         reward_scale: float = 8.0,
         kc_slope: float = SPARSE_KC_SLOPE,
@@ -127,7 +128,9 @@ class HybridLoop:
             slope_by_type=kc_slopes(connectome, kc_slope),
         )
         self.plastic = self.brain.plasticity(learning_rate=learning_rate)
-        self.learned: LearnedBias = learned_bias(connectome, gain=gain)
+        self.learned: LearnedBias = learned_bias(
+            connectome, gain=gain, coupling_hops=coupling_hops
+        )
 
         self.odours = {
             name: odour(connectome, glom, self.orn)

@@ -81,11 +81,16 @@ knows that paper. Ranking MBON types by their input share to DNa02 puts MBON31
 and MBON32 on top, accounting for 95% of all mushroom body input to the steering
 neuron — the same two cell types the literature names.
 
-**The DNa03 route is a gap we have not closed.** `flyloop/brain/coupling.py`
-couples MBONs to steering through the direct connection only. Since the
-literature calls the indirect route the main one, and our own numbers make its
-first leg nearly four times stronger, `share` is a lower bound and the gain
-figures derived from it are upper bounds.
+**The indirect routes are the larger ones, but DNa03 is not their carrier.**
+`flyloop/brain/coupling.py` now traces the input backwards as well
+(`coupling_hops=4`), and the collected indirect share is 2.14% against 0.52%
+direct -- 4.1x, which is the direction the relayed claim pointed. Ranking the
+actual two-step paths, though, puts **LAL051, LAL171, LAL172 and LAL173** on top
+and **DNa03 eighth**, at 0.0226%. The lateral accessory lobe is the premotor hub
+DNa02 sits downstream of, so this is not at odds with the steering literature;
+it is at odds with the specific relayed sentence naming DNa03. Since that
+sentence was summarised for us rather than read at source, the disagreement may
+be in the relay. Recorded in Run 12 with the numbers.
 
 ## Provenance
 

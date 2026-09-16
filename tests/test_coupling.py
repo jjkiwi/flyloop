@@ -128,3 +128,55 @@ def test_report_names_the_gain_and_the_share():
     text = learned_bias(c, gain=8.0).report()
     assert "gain 8" in text
     assert "25.000%" in text or "25.0%" in text
+
+
+# ------------------------------------------------- tracing the input back
+
+
+def test_one_hop_is_the_direct_connection(monkeypatch):
+    c = _connectome(mbon_to_dna02=0.3, other_to_dna02=0.7)
+    assert measured_share(c, hops=1) == pytest.approx(0.3, rel=1e-5)
+
+
+def test_more_hops_never_finds_less(monkeypatch):
+    """Each extra step adds the share arriving by paths of that length."""
+    c = _connectome(mbon_to_dna02=0.3, other_to_dna02=0.7)
+    seq = [measured_share(c, hops=k) for k in (1, 2, 3, 4)]
+    assert all(b >= a - 1e-12 for a, b in zip(seq[:-1], seq[1:], strict=True))
+
+
+def test_an_indirect_route_is_only_seen_with_more_hops():
+    """A cell reaching DNa02 only through a relay is invisible at one hop.
+
+    This is the case the literature points at: the mushroom body's larger
+    route to steering does not land on DNa02 directly.
+    """
+    n = len(TYPES)
+    t = np.asarray(TYPES)
+    neurons = pd.DataFrame(
+        {
+            "id": np.arange(n),
+            "type": TYPES,
+            "nt": ["acetylcholine"] * n,
+            "side": ["L", "R"] * (n // 2),
+        }
+    )
+    mbon = np.flatnonzero(t == "MBON01")
+    dna02 = np.flatnonzero(t == "DNa02")
+    relay = np.flatnonzero(t == "LC4")  # stands in for the LAL relays
+    dense = np.zeros((n, n), dtype=np.float32)
+    # MBONs reach DNa02 ONLY through the relay.
+    dense[mbon[:, None], relay] = 1.0 / len(mbon)
+    dense[relay[:, None], dna02] = 1.0
+    c = Connectome(neurons, sp.csr_matrix(dense), name="relay", meta={"matrix_kind": "inprop"})
+    assert measured_share(c, hops=1) == pytest.approx(0.0)
+    assert measured_share(c, hops=2) > 0.9
+
+
+def test_the_loop_defaults_to_the_direct_coupling():
+    """Every number recorded before this option existed used one hop."""
+    import inspect
+
+    from flyloop.hybrid import HybridLoop
+
+    assert inspect.signature(HybridLoop).parameters["coupling_hops"].default == 1

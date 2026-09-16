@@ -275,6 +275,7 @@ def cmd_record(args) -> int:
         target=target_at(args.bearing),
         dt=args.control_dt,
         gain=args.gain,
+        coupling_hops=args.coupling_hops,
         body=body,
     )
     print(" ", loop.learned.report())
@@ -469,6 +470,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--physics", action="store_true", help="NeuroMechFly instead of the stub")
     p.add_argument("--no-odour", action="store_true", help="behave with no odour present")
     p.add_argument("--name", help="episode folder name; defaults to gain<N>")
+    p.add_argument(
+        "--coupling-hops",
+        type=int,
+        default=1,
+        help="how far back to trace MBON input to DNa02; 4 includes the indirect routes",
+    )
     p.set_defaults(func=cmd_record, rate_model=True)
 
     p = sub.add_parser(

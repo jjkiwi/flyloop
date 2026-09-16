@@ -1012,6 +1012,66 @@ integrates a small steady difference in descending drive over many steps. So the
 connectome supplies a *direction*, and the body supplies the *gain*. Neither
 number alone describes the behaviour.
 
+### Following the indirect routes: 4.1x more coupling, same conclusion
+
+Run 12 as first written coupled MBONs to steering through the direct connection
+only. The literature says the main route is indirect, so this traces the input
+backwards instead. Input proportions make that well defined -- a neuron's input
+column sums to 1, so it is a distribution over where its input came from, and
+applying the matrix again pushes that distribution one step further back.
+
+| steps back | share of DNa02's input originating in MBONs |
+|---:|---:|
+| 1 (direct) | 0.5214% |
+| 2 | **0.6307%** |
+| 3 | 0.5461% |
+| 4 | 0.4441% |
+| **1-4 together** | **2.1423%, or 4.11x the direct connection** |
+
+The two-step share is larger than the direct one, so the indirect routes really
+are the bigger ones. Re-running the sweep with the fuller coupling moves the
+threshold by the same factor it moved the coupling:
+
+| gain | strength | mean modulation | closed |
+|---:|---:|---:|---:|
+| 1 | 0.021 | 1.000000 | 11.10 mm |
+| **50,000** | 1071 | **0.851348** | 7.83 mm |
+| 100,000 | 2142 | 0.951360 | 10.38 mm |
+
+**About 50,000x, against 200,000x for the direct connection alone** -- a factor
+of four, which is the factor the coupling grew by. Everything else stands: at
+gain 1 the modulation is still 1.000000 to six decimals and the fly closes the
+same 11.10 mm. Four orders of magnitude instead of five is still four orders of
+magnitude.
+
+(The 100,000 row closing *more* than the 50,000 row is not a reversal. Once the
+modulation reaches its zero floor the trajectories diverge, so the two rows are
+different paths rather than the same path pushed harder.)
+
+### The intermediates are not the ones we were told to expect
+
+The relayed literature summary named DNa03 as the main indirect route. Ranking
+the two-step paths by how much they actually carry does not agree:
+
+| route MBON -> X -> DNa02 | contribution |
+|---|---:|
+| via LAL051 | 0.0855% |
+| via LAL171 | 0.0839% |
+| via LAL172 | 0.0760% |
+| via LAL173 | 0.0560% |
+| via LAL170 | 0.0295% |
+| via LAL018 | 0.0265% |
+| via CB0356 | 0.0252% |
+| **via DNa03** | **0.0226% (eighth)** |
+
+The carriers are lateral accessory lobe neurons, not DNa03, which comes eighth.
+That is not obviously in conflict with the steering literature -- the LAL is the
+premotor hub DNa02 sits downstream of, and LAL013 and LAL010 both appear in the
+descriptions of this circuit -- but the specific claim that DNa03 is the main
+mushroom-body route to DNa02 is not what this connectome says. The claim was
+relayed to us rather than read at source (see `docs/LITERATURE.md`), so the
+disagreement may be in the relay rather than in the paper.
+
 ### What this does not show
 
 - **The fly aims but does not arrive.** In 1.5 s it closes 8.1–8.4 mm of 25 mm
