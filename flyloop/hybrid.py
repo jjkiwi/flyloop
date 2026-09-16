@@ -154,7 +154,16 @@ class HybridLoop:
         )
         self.phases: list[Phase] = []
         self.rows: list[dict] = []
+        #: Called with the full (neurons, hops) activation after every frame of
+        #: either phase. A recorder uses it to keep per-cell-type activity
+        #: without the loop having to know what a recorder is.
+        self.on_frame = None
         self.reset()
+
+    @property
+    def body_has_joints(self) -> bool:
+        """Whether the body can report leg posture. The kinematic stub cannot."""
+        return callable(getattr(self.body, "joint_angles", None))
 
     def _paired_readout(self, inp: np.ndarray):
         """Run one input twice: on the trained weights and on the naive ones.
@@ -216,6 +225,8 @@ class HybridLoop:
             )
             acts = res.activations
             depression = self.plastic.step(acts[self.plastic.kc].max(axis=1), reward)
+            if self.on_frame is not None:
+                self.on_frame(acts, phase="train")
             row = self._row(
                 phase="train",
                 acts=acts,
@@ -285,6 +296,8 @@ class HybridLoop:
             forward=float(np.clip((0.4 + forward) * mod, 0.0, 1.0)),
             turn=float(np.clip(self.turn_gain * turn * mod, -1.0, 1.0)),
         )
+        if self.on_frame is not None:
+            self.on_frame(res.activations, phase="behave")
         row = self._row(
             phase="behave",
             acts=res.activations,

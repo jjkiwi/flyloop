@@ -263,6 +263,47 @@ def cmd_atlas(args) -> int:
     return 0
 
 
+def cmd_record(args) -> int:
+    from .app import record_episode, write_atlas
+    from .experiments.embodied import target_at
+    from .hybrid import HybridLoop
+
+    c = _load(args)
+    print(c)
+    body = None
+    if args.physics:
+        from .body.nmf_body import NeuroMechFlyBody
+
+        body = NeuroMechFlyBody(control_dt=args.control_dt, seed=args.seed)
+    loop = HybridLoop(
+        c,
+        target=target_at(args.bearing),
+        dt=args.control_dt,
+        gain=args.gain,
+        body=body,
+    )
+    print(" ", loop.learned.report())
+    print(
+        f"  body {type(loop.body).__name__}, joints "
+        f"{'recorded' if loop.body_has_joints else 'absent (kinematic stub)'}"
+    )
+    ep = record_episode(
+        loop,
+        train_trials=args.train,
+        behave_steps=args.steps,
+        behave_odour=None if args.no_odour else "trained",
+        progress=args.verbose,
+    )
+    out = Path(args.out)
+    ep.save(out)
+    write_atlas(c, out)
+    print(
+        f"\n  {ep.manifest['live_types']:,} of {ep.manifest['all_types']:,} cell "
+        f"types responded; wrote {out}"
+    )
+    return 0
+
+
 def cmd_controls(args) -> int:
     from .experiments import looming_with_controls
 
@@ -418,6 +459,17 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--bearing", type=float, default=35.0, help="object bearing, degrees")
     p.add_argument("--out", help="write the per-neuron activation CSV here")
     p.set_defaults(func=cmd_atlas, rate_model=True)
+
+    p = sub.add_parser("record", help="record an episode for the web viewer")
+    p.add_argument("--out", default="app/data", help="directory to write into")
+    p.add_argument("--steps", type=int, default=40, help="behaviour control steps")
+    p.add_argument("--train", type=int, default=8, help="conditioning trials")
+    p.add_argument("--bearing", type=float, default=35.0)
+    p.add_argument("--gain", type=float, default=1.0, help="1.0 is the measured anatomy")
+    p.add_argument("--control-dt", type=float, default=0.05)
+    p.add_argument("--physics", action="store_true", help="NeuroMechFly instead of the stub")
+    p.add_argument("--no-odour", action="store_true", help="behave with no odour present")
+    p.set_defaults(func=cmd_record, rate_model=True)
 
     p = sub.add_parser(
         "controls", help="looming experiment vs shuffled/relabelled control graphs"
