@@ -219,10 +219,13 @@ class HybridLoop:
             # Closer each trial, so both the odour and the reward grow.
             distance = self.reward_scale * (1.0 - trial / max(n_trials, 1))
             reward = proximity_reward(distance, scale=self.reward_scale)
-            res = self.brain.run(
-                steady_state(self._input(smell=smell * 1.0, reward=reward), self.hops),
-                record=self.record,
-            )
+            # Paired here too, not just in the behaviour phase. Without it the
+            # training rows report the raw readout as if it were the learned
+            # change, which looks like a large effect on trial one and is really
+            # just the odour's innate response.
+            inp = steady_state(self._input(smell=smell * 1.0, reward=reward), self.hops)
+            res, _, naive = self._paired_readout(inp)
+            self.learned.baseline = naive
             acts = res.activations
             depression = self.plastic.step(acts[self.plastic.kc].max(axis=1), reward)
             if self.on_frame is not None:

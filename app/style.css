@@ -1,0 +1,172 @@
+/* Palette taken from docs/figures/plot_atlas.py so the browser and the paper
+   figures look like the same project. */
+:root {
+  --bg: #07070b;
+  --panel: #0c0c12;
+  --line: #1c1c26;
+  --fg: #c8c8d4;
+  --dim: #7a7a8a;
+  --dimmer: #4a4a58;
+  --cyan: #2ad4ff;
+  --magenta: #ff43c8;
+  --amber: #e0a020;
+  --warn: #d9534f;
+  --mono: ui-monospace, "SF Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: var(--bg); color: var(--fg);
+  font-family: var(--sans); font-size: 13px; line-height: 1.45;
+  overflow: hidden;
+}
+
+body {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100vh;
+}
+
+/* ------------------------------------------------------------- header */
+
+#top {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 18px; padding: 10px 16px 9px; border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, #0d0d15, #08080d);
+}
+#top h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
+#top h1 .sep { color: var(--dimmer); margin: 0 4px; }
+#provenance { margin: 2px 0 0; color: var(--dim); font-size: 11.5px; font-family: var(--mono); }
+
+.badges { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.badge {
+  border: 1px solid var(--line); border-left: 2px solid var(--amber);
+  background: #101018; padding: 5px 10px; max-width: 360px; border-radius: 2px;
+}
+.badge.warn { border-left-color: var(--warn); }
+.badge-k { color: var(--dim); text-transform: uppercase; font-size: 10px; letter-spacing: 0.09em; }
+.badge-v { font-family: var(--mono); font-size: 14px; color: #f0f0f5; margin-left: 6px; }
+.badge-note { display: block; color: var(--dim); font-size: 11px; margin-top: 2px; }
+
+/* -------------------------------------------------------------- stage */
+
+#stage {
+  display: grid; grid-template-columns: minmax(0, 1fr) 430px;
+  gap: 8px; padding: 8px; min-height: 0;
+}
+#side { display: grid; grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr); gap: 8px; min-height: 0; }
+
+.panel {
+  position: relative; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 2px; overflow: hidden; min-height: 0;
+}
+.panel canvas { display: block; width: 100%; height: 100%; }
+
+.hud {
+  position: absolute; top: 8px; left: 10px; pointer-events: none;
+  font-family: var(--mono); font-size: 11px; color: var(--dim);
+  text-shadow: 0 1px 3px #000;
+}
+.hud.right { left: auto; right: 10px; text-align: right; }
+.hud.bottom { top: auto; bottom: 8px; }
+.hud b { color: #f0f0f5; font-weight: 600; letter-spacing: 0.06em; }
+.hud .sub { color: var(--dimmer); font-size: 10.5px; max-width: 400px; white-space: normal; }
+.hud-grid { margin-top: 4px; display: grid; grid-template-columns: auto auto; gap: 0 10px; }
+.hud-grid .k { color: var(--dimmer); }
+.hud-grid .v { color: var(--fg); text-align: right; }
+
+#world-controls, #brain-panel .hud.right, #world-legend { pointer-events: auto; }
+#world-controls { display: flex; gap: 10px; align-items: center; }
+#world-controls label { cursor: pointer; }
+.mini {
+  font: inherit; font-size: 10.5px; color: var(--fg); background: #141420;
+  border: 1px solid var(--line); border-radius: 2px; padding: 2px 7px; cursor: pointer;
+}
+.mini:hover { background: #1c1c2c; }
+
+.key { display: block; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+.dot.walk { background: var(--cyan); }
+.dot.target { background: var(--magenta); }
+
+/* The "not morphology" note is not decoration: a cloud of cell bodies looks
+   enough like the well-known neurite renders that it has to say it is not one.
+   It sits under the canvas rather than over it so it never covers the brain. */
+#brain-panel .footnote {
+  margin: 0; padding: 6px 10px 8px; border-top: 1px solid var(--line);
+  color: var(--dimmer); font-size: 10.5px; line-height: 1.35;
+}
+#brain-panel { display: flex; flex-direction: column; }
+#brain-canvas { flex: 1; min-height: 0; }
+#brain-panel .hud.bottom { bottom: 76px; }
+/* The counts line sat on top of the optic lobes. Give the top HUD an opaque
+   strip of its own so it reads against the render instead of through it. */
+#brain-panel > .hud:first-of-type {
+  left: 0; right: 0; top: 0; padding: 5px 10px;
+  background: linear-gradient(#07070bee, #07070b00);
+}
+#brain-panel .hud.bottom { background: linear-gradient(#07070b00, #07070bdd 22%); padding: 10px 10px 4px; left: 0; right: 0; }
+#colorbar canvas { width: 220px; height: 10px; display: block; border: 1px solid var(--line); }
+.cb-ticks { display: flex; justify-content: space-between; width: 222px; color: var(--dimmer); font-size: 9.5px; }
+
+/* -------------------------------------------------- training overlay */
+
+#train-overlay {
+  position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+  background: radial-gradient(60% 60% at 50% 45%, rgba(20,20,34,0.82), rgba(7,7,11,0.96));
+  backdrop-filter: blur(1px);
+}
+body.phase-train #train-overlay { display: flex; }
+.train-card { width: min(620px, 92%); border: 1px solid var(--line); background: #0b0b12; padding: 16px 18px; }
+.train-card h2 { margin: 0 0 6px; font-size: 13px; letter-spacing: 0.1em; color: var(--amber); }
+.train-card .lede { margin: 0 0 12px; color: var(--dim); font-size: 12px; }
+.train-card code { font-family: var(--mono); color: var(--fg); }
+
+.mb-title { color: var(--dimmer); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 6px; }
+.mb-row { display: grid; grid-template-columns: 240px 1fr 92px; align-items: center; gap: 10px; margin: 4px 0; }
+.mb-label { color: var(--dim); font-size: 11.5px; }
+.mb-bar { position: relative; height: 8px; background: #14141e; border: 1px solid var(--line); }
+.mb-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--cyan); }
+.mb-row[data-k="reward"] .mb-bar i { background: var(--amber); }
+.mb-row[data-k="depression"] .mb-bar i { background: var(--magenta); }
+.mb-num { font-family: var(--mono); font-size: 11.5px; text-align: right; color: #f0f0f5; }
+.caveat { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--line);
+  color: var(--dim); font-size: 11.5px; }
+.caveat b { color: var(--amber); }
+
+/* ----------------------------------------------------------- timeline */
+
+#timeline {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px;
+  align-items: center; padding: 8px 16px 10px; border-top: 1px solid var(--line);
+  background: #0a0a10;
+}
+.play {
+  font: inherit; font-family: var(--mono); width: 62px; padding: 5px 0; cursor: pointer;
+  color: #07070b; background: var(--cyan); border: 0; border-radius: 2px; font-weight: 600;
+}
+.play.playing { background: var(--amber); }
+.scrub { position: relative; }
+#phasebar { display: flex; height: 13px; margin-bottom: 2px; gap: 1px; }
+#phasebar div { font-family: var(--mono); font-size: 9px; color: var(--dim);
+  padding-left: 5px; line-height: 13px; overflow: hidden; white-space: nowrap; }
+#phasebar .ph-train { background: #1b1b2c; border-bottom: 2px solid var(--amber); }
+#phasebar .ph-behave { background: #101822; border-bottom: 2px solid var(--cyan); }
+#frame { width: 100%; margin: 0; accent-color: var(--cyan); }
+.tl-read { font-family: var(--mono); font-size: 11px; color: var(--dim); display: flex; gap: 14px; align-items: center; }
+.tl-read .speed { color: var(--dimmer); }
+#speed { font: inherit; font-size: 11px; background: #14141e; color: var(--fg); border: 1px solid var(--line); }
+
+/* ------------------------------------------------------------- boot */
+
+#boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: var(--bg); z-index: 50; }
+#boot.done { display: none; }
+.boot-card { width: min(680px, 90%); border: 1px solid var(--line); padding: 18px 20px; background: #0b0b12; }
+.boot-card h2 { margin: 0 0 6px; font-size: 14px; }
+#boot-status { margin: 0; color: var(--dim); font-family: var(--mono); font-size: 12px; }
+#boot-error { margin: 12px 0 0; padding: 10px; background: #180e10; border: 1px solid #40202a;
+  color: #ff9a9a; font-size: 11px; white-space: pre-wrap; max-height: 40vh; overflow: auto; }

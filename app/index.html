@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>flyloop episode player</title>
+<link rel="stylesheet" href="./style.css">
+<!--
+  Three.js r169 is vendored under ./vendor/ rather than pulled from a CDN. Two
+  reasons, and the second is the real one: the page then works with no network
+  at all, and the machine this was built on cannot reach cdn.jsdelivr.net --
+  the egress proxy returns 000 -- so a CDN importmap would have shipped a viewer
+  that was never once seen to render. Nothing is bundled or built; these are the
+  upstream files unmodified.
+-->
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.js",
+    "three/addons/controls/OrbitControls.js": "./vendor/OrbitControls.js"
+  }
+}
+</script>
+</head>
+<body>
+
+<header id="top">
+  <div class="title">
+    <h1>flyloop <span class="sep">/</span> episode player</h1>
+    <p id="provenance">loading&hellip;</p>
+  </div>
+  <div class="badges">
+    <div class="badge" id="badge-gain" title="manifest.gain">
+      <span class="badge-k">gain</span>
+      <span class="badge-v" id="gain-value">--</span>
+      <span class="badge-note" id="gain-note"></span>
+    </div>
+    <div class="badge warn">
+      <span class="badge-k">playback</span>
+      <span class="badge-v">precomputed, not live</span>
+      <span class="badge-note">one control step costs 1.99&nbsp;s of wall clock to
+        simulate 0.05&nbsp;s, about 40x slower than the animal. This is a
+        recording of a run that already happened.</span>
+    </div>
+  </div>
+</header>
+
+<main id="stage">
+
+  <section id="world-panel" class="panel">
+    <canvas id="world-canvas"></canvas>
+
+    <div id="world-hud" class="hud">
+      <div class="hud-line"><b id="hud-phase">--</b> <span id="hud-frame"></span></div>
+      <div class="hud-grid" id="hud-state"></div>
+    </div>
+
+    <div id="world-legend" class="hud right">
+      <span class="key"><i class="dot walk"></i>logged path</span>
+      <span class="key"><i class="dot target"></i>target, radius from manifest</span>
+    </div>
+
+    <div id="world-controls" class="hud bottom">
+      <label><input type="checkbox" id="follow" checked> camera follows the fly</label>
+      <button id="view-arena" class="mini">frame the arena</button>
+      <button id="view-fly" class="mini">frame the fly</button>
+    </div>
+
+    <div id="train-overlay">
+      <div class="train-card">
+        <h2>TRAIN phase <span id="train-trial"></span></h2>
+        <p class="lede">The fly is on a rig and is not walking. <code>joints</code> is
+          all-NaN for these frames and <code>x</code>, <code>y</code>,
+          <code>theta</code> are NaN too, so there is no pose to draw and no
+          position to put it at. The body is hidden rather than posed from NaN.</p>
+
+        <div class="mb">
+          <div class="mb-title">mushroom body, the part that is actually changing</div>
+          <div class="mb-row" data-k="reward">
+            <span class="mb-label">reward (PAM dopamine drive)</span>
+            <span class="mb-bar"><i></i></span><span class="mb-num">--</span>
+          </div>
+          <div class="mb-row" data-k="depression">
+            <span class="mb-label">KC&rarr;MBON depression</span>
+            <span class="mb-bar"><i></i></span><span class="mb-num">--</span>
+          </div>
+          <div class="mb-row" data-k="mbon_readout">
+            <span class="mb-label">MBON readout (valence-weighted)</span>
+            <span class="mb-bar"><i></i></span><span class="mb-num">--</span>
+          </div>
+          <div class="mb-row" data-k="learned_component">
+            <span class="mb-label">learned component (readout &minus; untrained baseline)</span>
+            <span class="mb-bar"><i></i></span><span class="mb-num">--</span>
+          </div>
+        </div>
+
+        <p class="caveat" id="train-caveat"></p>
+      </div>
+    </div>
+  </section>
+
+  <aside id="side">
+
+    <section id="brain-panel" class="panel">
+      <canvas id="brain-canvas"></canvas>
+      <div class="hud">
+        <div class="hud-line"><b>CELL BODIES</b>, one point per soma</div>
+        <div class="sub" id="brain-counts">--</div>
+      </div>
+      <div class="hud right small">
+        <button class="mini" data-brainview="front">front</button>
+        <button class="mini" data-brainview="side">side</button>
+        <button class="mini" data-brainview="top">top</button>
+      </div>
+      <div class="hud bottom">
+        <div id="colorbar"><canvas id="colorbar-canvas" width="220" height="10"></canvas>
+          <div class="cb-ticks"><span>0</span><span>0.25</span><span>0.5</span><span>1.0</span></div>
+        </div>
+        <div class="sub">per-frame activation of each soma's <i>cell type</i>, matched
+          atlas&rarr;episode by name. <span id="brain-unmatched"></span></div>
+      </div>
+      <p class="footnote">
+        Not morphology. The prepared MaleCNS files carry one spatial number per
+        neuron -- the soma position -- and no skeletons, so this is a cloud of
+        cell bodies on the rind around the neuropil, not the rainbow neurite
+        render it resembles.
+      </p>
+    </section>
+
+    <section id="trace-panel" class="panel">
+      <canvas id="trace-canvas"></canvas>
+    </section>
+
+  </aside>
+</main>
+
+<footer id="timeline">
+  <button id="play" class="play">play</button>
+  <div class="scrub">
+    <div id="phasebar"></div>
+    <input type="range" id="frame" min="0" max="0" step="1" value="0">
+  </div>
+  <div class="tl-read">
+    <span id="tl-frame">frame --</span>
+    <span id="tl-time">t = --</span>
+    <label class="speed">rate
+      <select id="speed">
+        <option value="1">1x (20 fps, real time)</option>
+        <option value="0.5">0.5x</option>
+        <option value="0.25">0.25x</option>
+        <option value="2">2x</option>
+      </select>
+    </label>
+  </div>
+</footer>
+
+<div id="boot">
+  <div class="boot-card">
+    <h2>loading the episode</h2>
+    <p id="boot-status">fetching rig.json&hellip;</p>
+    <pre id="boot-error" hidden></pre>
+  </div>
+</div>
+
+<script type="module" src="./js/boot.js"></script>
+</body>
+</html>
