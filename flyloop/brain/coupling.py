@@ -114,6 +114,9 @@ class LearnedBias:
     valence: np.ndarray  # per-MBON approach-minus-withdraw weight
     share: float  # measured MBON -> DNa02 input share
     gain: float = 1.0
+    #: How far back ``share`` traced the input. 1 is the direct connection;
+    #: 4 collects the indirect routes, which are 4.1x larger on MaleCNS.
+    coupling_hops: int = 1
     #: Readout the same odour produced *before* any training, subtracted so the
     #: bias carries what was learned rather than what the odour innately does.
     #: Set per odour by whoever runs the training; 0.0 means "not measured",
@@ -169,7 +172,8 @@ class LearnedBias:
         base = "unmeasured" if self.baseline == 0.0 else f"{self.baseline:+.6f}"
         return (
             f"learned bias: {len(self.rows)} MBONs, "
-            f"MBON->{STEERING_OUTPUT} input share {self.share:.3%}, "
+            f"MBON->{STEERING_OUTPUT} input share {self.share:.3%} "
+            f"({self.coupling_hops} hop{'s' if self.coupling_hops > 1 else ''}), "
             f"gain {self.gain:g} -> moves steering by up to {self.strength:.2%}; "
             f"untrained baseline {base}"
         )
@@ -201,6 +205,7 @@ def learned_bias(
         rows=np.asarray(ens.rows),
         valence=valence,
         share=measured_share(c, hops=coupling_hops),
+        coupling_hops=coupling_hops,
         gain=float(gain),
         _norm=norm,
     )

@@ -46,9 +46,17 @@ async function main() {
   // browser cache makes the swap cheap and the code stays honest about what is
   // being reloaded.
   const pick = $("episode-pick");
+  // Label with the coupling as well as the gain: two episodes at the same gain
+  // but different hop counts are different experiments, and "gain 50,000x"
+  // twice in a list would hide that.
   pick.innerHTML = episodes
-    .map((e) => `<option value="${e.name}"${e === chosen ? " selected" : ""}>` +
-                `gain ${e.gain.toLocaleString()}\u00d7</option>`)
+    .map((e) => {
+      const hops = e.coupling_hops || 1;
+      const route = hops === 1 ? "direct" : `${hops} hops`;
+      const pct = e.coupling_share ? ` ${(e.coupling_share * 100).toFixed(2)}%` : "";
+      return `<option value="${e.name}"${e === chosen ? " selected" : ""}>` +
+             `gain ${e.gain.toLocaleString()}\u00d7 \u00b7 ${route}${pct}</option>`;
+    })
     .join("");
   pick.addEventListener("change", () => {
     location.search = `?ep=${encodeURIComponent(pick.value)}`;

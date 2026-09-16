@@ -26,9 +26,25 @@ The first writes `episode.{json,bin}` and `atlas.{json,bin}`; the second writes
 `rig.json` and `meshes.bin`. A 40-step physics episode takes about 90 seconds,
 almost all of it MuJoCo.
 
-`--gain N` records the same run with the learned coupling scaled. The player
-reads the gain out of the manifest and says so on screen, so an amplified run
-cannot be mistaken for the measured one.
+`--gain N` records the same run with the learned coupling scaled, and
+`--coupling-hops N` changes how far back the MBON share of DNa02's input is
+traced -- 1 is the direct connection (0.53%), 4 collects the indirect routes
+(2.14%, and see Run 12 for why those are the larger ones). Episodes are named
+`gain<N>h<hops>` and the picker labels both, because two runs at the same gain
+with different hop counts are different experiments and "gain 50,000x" twice in
+a list would hide that.
+
+The four episodes worth having:
+
+```bash
+for spec in "1 1" "1 4" "70000 1" "50000 4"; do
+  set -- $spec
+  flyloop --data-root ~/connectome_data_prep record --physics --out app/data       --gain $1 --coupling-hops $2
+done
+```
+
+The two at gain 1 are the anatomy as measured, on either coupling, and both do
+nothing visible. The other two are where each coupling first bends the path.
 
 ## What the panels are, and are not
 

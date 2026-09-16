@@ -293,7 +293,7 @@ def cmd_record(args) -> int:
     out = Path(args.out)
     # Episodes live in their own folders; the rig and atlas are shared, so a
     # gain comparison does not reload 8 MB of geometry to change one number.
-    name = args.name or f"gain{args.gain:g}"
+    name = args.name or f"gain{args.gain:g}h{args.coupling_hops}"
     ep.save(out / "episodes" / name)
     write_atlas(c, out)
     write_index(out)
