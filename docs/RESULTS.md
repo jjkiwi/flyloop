@@ -1336,3 +1336,119 @@ before it changes what a physical fly does.**
   that is the main path.
 - Sweep the learning rate against the number of trials; 8 trials at lr 0.2
   depresses 1.05% of KC→MBON weight, and nothing here locates the optimum.
+
+## Run 13 — the controller's open-loop shape, and a lean nobody asked for
+
+**Date** 2026-09-16
+**Data, model** MaleCNS v1.0, input-proportion weights, rate model, 5 hops. No
+body: this is the readout alone, probed with an object at 19 bearings.
+**Question** Run 10 noted the commanded turn barely varied and flagged possible
+saturation. Is the steering readout proportional to where the object is, or is
+it bang-bang? And since the literature reports the relationship as *linear*
+(Rayshubskiy, Holtz & Wilson, eLife 102230), does this model reproduce it?
+
+### It is proportional, and roughly linear where it matters
+
+| bearing | −30° | −10° | 0° | +10° | +30° | +60° | +90° |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| turn | −0.0655 | −0.0156 | **+0.0117** | +0.0363 | +0.0824 | +0.0624 | +0.0320 |
+
+Not saturated: the command spans −0.066 to +0.082 and tracks bearing. Over
+|bearing| ≤ 60° a straight line fits with **R² = 0.845**, slope 1.25 × 10⁻³ per
+degree. So the linear proportionality the recordings describe is approximately
+what this wiring produces, which is a real agreement and not one the model was
+fitted to. Past 30° the curve turns over, as a tuning curve should.
+
+There is also a hard rectification the "see-saw" description does not have:
+DNa02_L is *exactly* zero for every positive bearing and DNa02_R exactly zero
+below −30°. In the animal one copy is inhibited as the other is excited; here
+the contralateral copy simply falls below threshold and stops.
+
+### The lean: a centred object still says "go right"
+
+An object dead ahead commands **+0.0117**, which is **14% of the strongest turn
+anywhere in the sweep**, to the fly's right. At the closed loop's turn gain of
+3.0 that is a standing command of +0.035 held for the whole episode.
+
+Three checks locate it, and the first two rule out the obvious suspects.
+
+- **It is not the stimulus.** At bearing 0 the projection lights exactly 156
+  columns in each eye. Identical input, asymmetric output.
+- **It is not a lopsided reconstruction.** MaleCNS is symmetric in aggregate:
+  73,467 neurons on the left against 73,638 on the right, and across 373 cell
+  types with 20 or more cells the median left-right asymmetry is exactly zero,
+  with only 4 types differing by more than 20%.
+- **It is not a resting offset.** With no stimulus at all both DNa02 sit at
+  exactly 0.00000.
+
+What is uneven is this particular pathway. **LC4 has 71 cells on the left and 55
+on the right**, a 13% imbalance, and LC4 is what carries object position to the
+steering neuron. The bias is already present at the LC4 stage (LC4_R − LC4_L =
++0.022 for a centred object) and survives every population statistic we tried —
+mean, maximum, and fraction active all show it, the last with the opposite sign.
+So it is in the wiring of the visual-to-steering path, not in how that path is
+summarised. The controls below show it is not in the *measured* wiring
+specifically: a rewired graph leans harder.
+
+### The controls: the proportionality is wiring-specific, the lean is not
+
+| graph | peak turn | centre bias | % of peak | linear R² |
+|---|---:|---:|---:|---:|
+| **MaleCNS** | 0.0824 | +0.0117 | 14% | **0.845** |
+| rewired, degree-preserving | 0.7246 | −0.1587 | 22% | **0.024** |
+| signs scrambled | 1.0000 | 0.0000 | 0% | — |
+
+Two separate conclusions, and they point opposite ways.
+
+**The linear tuning needs the measured wiring.** A degree-preserving rewiring
+still produces a turn command -- a large one, nine times the peak -- but it has
+almost no relationship to where the object is: R² falls from 0.845 to 0.024.
+So the agreement with the recorded linear relationship is a property of the
+connectome and not of any network with this degree sequence, which is the
+strongest form the claim can take here.
+
+**The lean is not.** The rewired control leans harder than the real graph, 22%
+against 14%, and in the opposite direction. So "MaleCNS pushes right" overstates
+it: networks of this shape lean, and this one happens to lean right by 14%. The
+LC4 count imbalance is a plausible contributor, not a demonstrated cause.
+
+The sign-scrambled control is the runaway this project's sign table exists to
+prevent: both DNa02 pinned at exactly 1.0, so their difference is exactly zero
+at every bearing. A steering readout that reports 0.000 everywhere is not
+balanced, it is saturated, and the two look identical in the summary statistic.
+That is why `peak_turn` is reported next to the bias.
+
+### Why this matters more than its size
+
+**Every single-sided measurement in this model inherits it.** A 14%-of-full-scale
+standing rightward push, sustained across an episode, is the same order as the
+effects this project measures. Run 10's mirror-pair design cancels it exactly,
+and Run 10 justified that design by the gait's drift alone — the brain had a
+second, independent reason for it that we had not yet found.
+
+`flyloop.experiments.bias` measures this, so a future change to the visual
+pathway can be checked against it rather than assumed symmetric.
+
+### What this does not show
+
+- **One object size, one hop count.** The tuning curve is for a 5.7° half-width
+  probe at 5 synaptic hops. Both change the shape.
+- **The lit-column counts are only nearly mirrored** away from centre — 187/24 at
+  −30° against 20/188 at +30°, for instance. Those few columns are a small extra
+  asymmetry on top of the wiring's, and the report records them so the two can
+  be told apart.
+- **It says nothing about the real animal.** A 13% left-right difference in an
+  LC4 count is as likely to be reconstruction completeness as biology, and
+  nothing here can distinguish those. The rewired control leaning harder makes
+  the LC4 imbalance a candidate rather than an explanation.
+- The linear fit is over one connectome and one probe; R² = 0.845 is a decent
+  line through a curve that is visibly not straight, not a demonstration that
+  the model is linear.
+
+### Next
+
+- Check whether the FlyWire female brain shows the same sign of lean, which
+  would separate specimen from method.
+- Sweep the probe's angular size. If the linear range scales with it, the
+  controller is reading angular position; if it does not, it is reading which
+  columns are lit, which is a weaker claim.
