@@ -73,6 +73,11 @@ class LearnedBias:
     valence: np.ndarray  # per-MBON approach-minus-withdraw weight
     share: float  # measured MBON -> DNa02 input share
     gain: float = 1.0
+    #: Readout the same odour produced *before* any training, subtracted so the
+    #: bias carries what was learned rather than what the odour innately does.
+    #: Set per odour by whoever runs the training; 0.0 means "not measured",
+    #: which makes the bias the raw readout and is almost never what you want.
+    baseline: float = 0.0
     #: Readout scale, so a fully active ensemble gives a readout near 1.
     _norm: float = 1.0
 
@@ -92,21 +97,40 @@ class LearnedBias:
             a = a.max(axis=1)
         return float(np.dot(a[self.rows], self.valence) / self._norm)
 
+    def learned_component(self, activations: np.ndarray) -> float:
+        """The part of the readout that training put there.
+
+        Measured on MaleCNS, an odour's raw readout is dominated by which odour
+        it is, not by what happened to it: the two odours used here sit at
+        -0.00025 and +0.00434 before any training at all, and eight pairing
+        trials move each by a few percent of itself. Amplifying the raw readout
+        therefore amplifies innate odour identity and calls it learning, which
+        is the error this subtraction exists to prevent.
+
+        It also happens to be the better model. In the fly the innate valence of
+        an odour is carried by the lateral horn; the mushroom body carries the
+        learned modification to it. Subtracting the untrained baseline leaves
+        approximately the mushroom body's own contribution.
+        """
+        return self.readout(activations) - self.baseline
+
     def modulation(self, activations: np.ndarray) -> float:
         """Factor applied to the approach drive: 1.0 means the reflex, unchanged.
 
-        Positive valence pushes the fly toward what it is looking at, negative
-        pulls it off. Clipped at zero so a learned aversion can cancel approach
-        but never invert the steering -- reversing which way the fly turns is
-        the visual pathway's job, not the mushroom body's.
+        Positive learned valence pushes the fly toward what it is looking at,
+        negative pulls it off. Clipped at zero so a learned aversion can cancel
+        approach but never invert the steering -- reversing which way the fly
+        turns is the visual pathway's job, not the mushroom body's.
         """
-        return float(max(0.0, 1.0 + self.strength * self.readout(activations)))
+        return float(max(0.0, 1.0 + self.strength * self.learned_component(activations)))
 
     def report(self) -> str:
+        base = "unmeasured" if self.baseline == 0.0 else f"{self.baseline:+.6f}"
         return (
             f"learned bias: {len(self.rows)} MBONs, "
             f"MBON->{STEERING_OUTPUT} input share {self.share:.3%}, "
-            f"gain {self.gain:g} -> moves steering by up to {self.strength:.2%}"
+            f"gain {self.gain:g} -> moves steering by up to {self.strength:.2%}; "
+            f"untrained baseline {base}"
         )
 
 
