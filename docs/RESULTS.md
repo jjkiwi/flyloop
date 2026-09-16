@@ -1131,3 +1131,148 @@ because backing up is not a steering decision.
   from "this is what any funnel-shaped network does".
 - Highlight the reward pathway the same way, using the PAM cluster rather than a
   visual stimulus.
+
+## Run 12 — a reflex with a learned base, and the size of the gap
+
+**Date** 2026-09-16
+**Data, model** MaleCNS v1.0, input-proportion weights, rate model, 5 hops,
+Kenyon cell slope 0.35, learning rate 0.2, 8 conditioning trials.
+**Question** The visual reflex works (Run 10) and the mushroom body learns
+(Run 9). Can the learned valence bias the reflex, the way it does in the animal,
+and how much of the behaviour does it move?
+
+### The connectome chose the architecture
+
+Two measurements decided the design before any code was written:
+
+| path | input share |
+|---|---:|
+| LC4 + LPLC2 → Kenyon cells | **0.0000%** |
+| MBON → DNa02 | **0.5256%** |
+| MBON → DNa03 | 1.9613% |
+| DNa03 → DNa02 | 1.1616% |
+| MBON → DNa01, DNp09 | 0.0000% |
+
+A seen object cannot be learned through the mushroom body, so whatever is
+learned has to be an odour. And MBONs reach steering through one narrow door.
+That is the arrangement the animal has: **the odour says whether to approach,
+the sight says which way**, and the mushroom body biases a command it does not
+generate.
+
+An independent check fell out of this. Li et al. (*eLife* 2020;9:e62576) name
+MBON32 and MBON31 as DNa02's direct mushroom body input; ranking MBON types here
+by input share, with no reference to that paper, puts those two on top at 0.279%
+and 0.219% — 0.498% of the 0.526% total. See `docs/LITERATURE.md`.
+
+### The measurement had to be rebuilt twice
+
+**First attempt: trained odour against control odour.** −0.00025 against
++0.00434, which looks like a large learned effect. It is not one. With no
+training at all the same two odours sit at −0.00025 and +0.00434. The difference
+is odour identity; eight pairing trials move each by about 2% of itself.
+
+**Second attempt: subtract each odour's untrained baseline**, measured on the
+odour alone. Also wrong. The behaving fly has an object in view as well, and
+that moves the readout by 0.001 — twenty times the effect being isolated.
+
+**What works is a paired readout inside the step.** The same input is run twice,
+once on the trained weights and once on the naive ones, and the learned
+component is their difference. Before any training it is zero by construction,
+which is now a test. The second pass costs 0.16 s against the physics step's
+1.8 s, so exactness is nearly free.
+
+### Result: the learned signal is real, and four orders of magnitude too small
+
+Trained and behaving in the same odour, 8 trials, 40 control steps, target 25 mm
+away at 35°.
+
+| gain | coupling strength | mean modulation | closed | mean \|bearing\| |
+|---:|---:|---:|---:|---:|
+| **1** (measured anatomy) | 0.005 | **1.000000** | 11.28 mm | 8.86° |
+| 1,000 | 5.3 | 0.999568 | 11.28 mm | 8.87° |
+| 10,000 | 52.6 | 0.995682 | 11.23 mm | 8.99° |
+| 40,000 | 210 | 0.970284 | 10.92 mm | 9.59° |
+| **70,000** | 368 | **0.860790** | 9.60 mm | 12.46° |
+| 100,000 | 526 | 0.073395 | 0.73 mm | 28.70° |
+
+At the measured coupling the learned component of the descending drive is
+**−8.2 × 10⁻⁵** and the approach drive moves by less than a millionth. Behaviour
+is identical to Run 10 to two decimal places. **About 70,000× the measured
+MBON→DNa02 coupling is where learning first bends the path**, and by 100,000×
+the learned aversion cancels approach almost completely — the fly closes 0.73 mm
+instead of 11.28.
+
+This is the sharpest form of what Runs 8 and 9 found. Not "1.7% of the balance"
+but: the learned component of the steering command is about eight parts in a
+hundred thousand.
+
+### In a body with legs the gap is wider still, and the reason is Run 10's
+
+The table above is the kinematic stub. Repeating it on NeuroMechFly, same
+odour, same seed, moves the threshold by another factor of three:
+
+| gain | mean modulation | min modulation | closed | mean \|bearing\| |
+|---:|---:|---:|---:|---:|
+| 1 | 1.000000 | 1.000000 | 11.10 mm | 7.05° |
+| 70,000 | 0.991924 | 0.984712 | 10.99 mm | 7.15° |
+| **200,000** | 0.901843 | 0.000000 | 9.09 mm | 9.79° |
+| 500,000 | 0.892176 | 0.000000 | 9.28 mm | 9.05° |
+
+At 70,000x -- enough to bend the stub's path by 1.7 mm -- the physical fly gives
+up 0.11 mm. It takes about **200,000x** to move it, and past that the effect
+saturates, because the modulation floors at zero and cannot push further.
+
+**This is the same fact as Run 10, seen from the other side.** There, a
+commanded turn of 0.050 became 37.7 degrees of heading, and the conclusion was
+that the gait supplies the gain. A tripod gait integrates the descending command
+over many steps, so a small *steady* difference accumulates -- and a *transient*
+dip washes out. The learned modulation is transient: it tracks an odour readout
+that moves with the fly's own view. The body amplifies one and attenuates the
+other, and which it does to a given signal depends on the signal's time course,
+not its size.
+
+So the honest headline is the wider number. **A learned association in this
+connectome needs about five orders of magnitude more coupling than it has
+before it changes what a physical fly does.**
+
+### The controls that make it readable
+
+- **No odour, any gain.** At gain 100,000 with nothing in the air the modulation
+  is exactly 1.000000000 and the fly closes 11.39 mm. The learned machinery
+  cannot leak into behaviour through some other route.
+- **No training, any odour.** The learned component is exactly 0, by
+  construction of the paired readout.
+- **Direction is never overridden.** The modulation floors at zero, so a learned
+  aversion can cancel approach but not reverse the turn. Which way to go is the
+  visual pathway's answer, and 0.5% of DNa02's input does not get to overrule it.
+
+### What this does not show
+
+- **Two bodies give two thresholds**, 70,000x and 200,000x, and neither is "the"
+  answer: they differ because the gait filters the command, not because one
+  measurement is better. Quoting either without the body is meaningless.
+- **Past saturation the sweep stops measuring gain.** At 200,000x and above the
+  modulation hits its zero floor within the episode, so higher gains change the
+  fraction of time spent floored rather than the depth of the effect. The 500,000
+  row closing *more* than the 200,000 row is that, not a reversal.
+- **The gain figures are upper bounds.** The coupling models only the direct
+  MBON→DNa02 connection, and the literature calls the indirect route through
+  DNa03 the main one — which this connectome supports, MBON→DNa03 being nearly
+  four times stronger. Routing through DNa03 would cut the required gain by a
+  factor of a few, not by orders of magnitude.
+- **The learned component is not gain-independent.** It drifts from −8.2e−5 at
+  gain 1 to −2.2e−3 at gain 100,000, because modulation changes behaviour, which
+  changes what the eye sees, which changes the readout. The high-gain rows are
+  measuring a different trajectory, not the same one harder.
+- **Kenyon cells are driven directly** with a synthetic sparse code, not through
+  projection neurons. In this connectome KC input is dominated by KC↔KC
+  recurrence and APL feedback (10.6%), and that approximation carries over from
+  Run 9 unchanged.
+- One odour pair, one bearing, one distance, one seed, one learning rate.
+
+### Next
+
+- Route the coupling through DNa03 and re-measure, now that the literature says
+  that is the main path.
+- Sweep the learning rate against the number of trials; 8 trials at lr 0.2
+  depresses 1.05% of KC→MBON weight, and nothing here locates the optimum.

@@ -188,6 +188,35 @@ textbook DNp01 sat silent. Nothing in the analysis was told any of that.
 skeletons, and neuPrint and Codex are unreachable from here, so this is not the
 morphology render it resembles: somata sit on the rind around the neuropil.
 
+## There is an application
+
+```bash
+flyloop --data-root ~/connectome_data_prep record --physics --out app/data --gain 1
+python -c "from flyloop.viz.fly_geometry import export_rig; export_rig('app/data')"
+python -m http.server 8000 --directory app
+```
+
+The fly on the left, posed frame by frame from 42 logged joint angles; its brain
+on the right, 138,496 cell bodies coloured by their type's activation; both
+scrubbing on one timeline. Record a second episode at another `--gain` and the
+player offers a picker, so the same fly under the same stimulus can be compared
+with only the strength of the MBON→DNa02 coupling changed.
+
+Three things it says on its face, because they are the result rather than
+limitations to be hidden:
+
+- **The gain is always on screen.** At the measured coupling the learned bias
+  moves the approach drive by less than a millionth. That is what the anatomy
+  says, not a bug to compensate.
+- **Playback is not simulation.** One control step costs 1.99 s of wall clock to
+  simulate 0.05 s. There is no live mode.
+- **The brain panel is cell bodies, not morphology.** The files carry no
+  skeletons, so it is a cloud of somata on the rind around the neuropil.
+
+During the training phase the fly is on a rig and its joint angles are NaN. The
+player hides the body and shows the mushroom body instead; posing a fly from
+NaN draws a corpse sliding across the floor and reads as a physics bug.
+
 ## Quick start
 
 ```bash

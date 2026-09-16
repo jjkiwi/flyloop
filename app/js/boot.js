@@ -8,7 +8,7 @@
  */
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { load, halfSelfTest } from "./data.js";
+import { load, listEpisodes, halfSelfTest } from "./data.js";
 import { Rig } from "./fk.js";
 
 const $ = (id) => document.getElementById(id);
@@ -38,7 +38,23 @@ main().catch((err) => {
 
 async function main() {
   halfSelfTest();
-  const D = await load((s) => (bootStatus.textContent = s));
+  const episodes = await listEpisodes();
+  const want = new URLSearchParams(location.search).get("ep");
+  const chosen = episodes.find((e) => e.name === want) || episodes[0];
+  // Switching episodes reloads the page rather than rebuilding the scenes.
+  // meshes.bin and atlas.bin are served with the same URL either way, so the
+  // browser cache makes the swap cheap and the code stays honest about what is
+  // being reloaded.
+  const pick = $("episode-pick");
+  pick.innerHTML = episodes
+    .map((e) => `<option value="${e.name}"${e === chosen ? " selected" : ""}>` +
+                `gain ${e.gain.toLocaleString()}\u00d7</option>`)
+    .join("");
+  pick.addEventListener("change", () => {
+    location.search = `?ep=${encodeURIComponent(pick.value)}`;
+  });
+
+  const D = await load((s) => (bootStatus.textContent = s), chosen.path);
   window.__flyloop = D; // for poking at from the console
 
   const man = D.episode;

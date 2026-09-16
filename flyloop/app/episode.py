@@ -195,6 +195,34 @@ def record_episode(
     )
 
 
+def write_index(out_dir: str | Path) -> Path:
+    """List every recorded episode under ``out_dir/episodes`` for the player.
+
+    The rig and the atlas are shared, so several runs of the same fly differing
+    only in a parameter -- the learned coupling gain, most usefully -- can be
+    compared without reloading 8 MB of geometry between them.
+    """
+    out = Path(out_dir)
+    found = []
+    for man in sorted((out / "episodes").glob("*/episode.json")):
+        m = json.loads(man.read_text())
+        found.append(
+            {
+                "name": man.parent.name,
+                "path": f"episodes/{man.parent.name}/",
+                "gain": m.get("gain"),
+                "frames": m.get("frames"),
+                "body": m.get("body"),
+                "behave_odour": m.get("behave_odour"),
+                "live_types": m.get("live_types"),
+            }
+        )
+    (out / "episodes.json").write_text(
+        json.dumps({"format": "flyloop-index/1", "episodes": found})
+    )
+    return out / "episodes.json"
+
+
 def write_atlas(c: Connectome, out_dir: str | Path) -> Path:
     """Write the static per-neuron map an episode's type activity is painted on.
 

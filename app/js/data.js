@@ -93,12 +93,20 @@ function arrayView(index, buf, name) {
 
 // ---------------------------------------------------------------- load
 
-export async function load(onStatus = () => {}) {
+/** The recorded episodes, newest format first. Rig and atlas are shared. */
+export async function listEpisodes() {
+  const idx = await getJSON("episodes.json");
+  return idx.episodes;
+}
+
+export async function load(onStatus = () => {}, epPath = "") {
   onStatus("rig.json + meshes.bin");
   const [rig, meshBuf] = await Promise.all([getJSON("rig.json"), getBuffer("meshes.bin")]);
 
   onStatus("episode.json + episode.bin");
-  const [episode, epBuf] = await Promise.all([getJSON("episode.json"), getBuffer("episode.bin")]);
+  const [episode, epBuf] = await Promise.all([
+    getJSON(epPath + "episode.json"), getBuffer(epPath + "episode.bin"),
+  ]);
 
   onStatus("atlas.json + atlas.bin");
   const [atlas, atlasBuf] = await Promise.all([getJSON("atlas.json"), getBuffer("atlas.bin")]);

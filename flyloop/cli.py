@@ -54,8 +54,7 @@ def cmd_theory(args) -> int:
         print(f"  {f:14s} {getattr(p, f)}")
     print(f"\n  peak PSP per unit g ....... {peak_psp_factor(p):.4f}")
     print(
-        f"  synapses to threshold ..... {synapses_to_threshold(p):.0f}"
-        " (single spike, at rest)"
+        f"  synapses to threshold ..... {synapses_to_threshold(p):.0f} (single spike, at rest)"
     )
     print(
         "\nA connectome edge of a handful of synapses cannot fire anything on its\n"
@@ -137,9 +136,7 @@ def cmd_sweep(args) -> int:
     if rates:
         kw["rates"] = rates
     for name, graph in graphs:
-        sweep = recruitment_sweep(
-            graph, graph_name=name, progress=args.verbose, **kw
-        )
+        sweep = recruitment_sweep(graph, graph_name=name, progress=args.verbose, **kw)
         print()
         print(sweep.report(criterion=args.criterion))
         if args.out:
@@ -248,9 +245,7 @@ def cmd_atlas(args) -> int:
     for label, classes in _ATLAS_STAGES:
         m = np.isin(sc, classes) & resp
         if m.any():
-            print(
-                f"  {label:20s} {np.abs(lat[m]).mean():.3f}   ({int(m.sum()):,} cells)"
-            )
+            print(f"  {label:20s} {np.abs(lat[m]).mean():.3f}   ({int(m.sum()):,} cells)")
     print("\n  most lateralised cell types:")
     types = c.neurons["type"].astype(str).to_numpy()
     by_type = pd.Series(np.abs(lat)).groupby(types).mean().sort_values(ascending=False)
@@ -264,7 +259,7 @@ def cmd_atlas(args) -> int:
 
 
 def cmd_record(args) -> int:
-    from .app import record_episode, write_atlas
+    from .app import record_episode, write_atlas, write_index
     from .experiments.embodied import target_at
     from .hybrid import HybridLoop
 
@@ -295,11 +290,15 @@ def cmd_record(args) -> int:
         progress=args.verbose,
     )
     out = Path(args.out)
-    ep.save(out)
+    # Episodes live in their own folders; the rig and atlas are shared, so a
+    # gain comparison does not reload 8 MB of geometry to change one number.
+    name = args.name or f"gain{args.gain:g}"
+    ep.save(out / "episodes" / name)
     write_atlas(c, out)
+    write_index(out)
     print(
         f"\n  {ep.manifest['live_types']:,} of {ep.manifest['all_types']:,} cell "
-        f"types responded; wrote {out}"
+        f"types responded; wrote {out}/episodes/{name}"
     )
     return 0
 
@@ -308,9 +307,7 @@ def cmd_controls(args) -> int:
     from .experiments import looming_with_controls
 
     c = _load(args)
-    cmp = looming_with_controls(
-        c, n_trials=args.trials, seed=args.seed, progress=args.verbose
-    )
+    cmp = looming_with_controls(c, n_trials=args.trials, seed=args.seed, progress=args.verbose)
     print(cmp.report())
     if args.out:
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)
@@ -382,11 +379,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dataset", default="malecns", help="dataset name under --data-root")
     ap.add_argument("--min-synapses", type=int, default=5)
     ap.add_argument(
-        "--matrix", choices=("syncount", "inprop", "outprop"), default=None,
+        "--matrix",
+        choices=("syncount", "inprop", "outprop"),
+        default=None,
         help="weighting to load; rate-model commands default to inprop",
     )
     ap.add_argument(
-        "--sign-source", default="flyloop", choices=("flyloop", "dataset"),
+        "--sign-source",
+        default="flyloop",
+        choices=("flyloop", "dataset"),
         help="whose neurotransmitter signs to use; they differ on ~5%% of neurons",
     )
     ap.add_argument("--seed", type=int, default=0)
@@ -411,9 +412,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", help="write per-trial CSV here")
     p.set_defaults(func=cmd_looming)
 
-    p = sub.add_parser(
-        "activation", help="drive a population and read the descending neurons"
-    )
+    p = sub.add_parser("activation", help="drive a population and read the descending neurons")
     p.add_argument("--drive", default="LC4", help="cell type to stimulate")
     p.add_argument("--side", default="L", choices=("L", "R", "both"))
     p.add_argument("--rate", type=float, default=50.0, help="Poisson drive rate, Hz")
@@ -469,6 +468,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--control-dt", type=float, default=0.05)
     p.add_argument("--physics", action="store_true", help="NeuroMechFly instead of the stub")
     p.add_argument("--no-odour", action="store_true", help="behave with no odour present")
+    p.add_argument("--name", help="episode folder name; defaults to gain<N>")
     p.set_defaults(func=cmd_record, rate_model=True)
 
     p = sub.add_parser(
@@ -479,9 +479,7 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(func=cmd_controls)
 
     p = sub.add_parser("columns", help="describe a published columnar retinotopy table")
-    p.add_argument(
-        "--table", default="mcns_right", choices=("mcns_right", "fafb_right")
-    )
+    p.add_argument("--table", default="mcns_right", choices=("mcns_right", "fafb_right"))
     p.set_defaults(func=cmd_columns)
 
     p = sub.add_parser("loop", help="run the closed sensorimotor loop")
