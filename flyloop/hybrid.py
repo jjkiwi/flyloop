@@ -44,6 +44,9 @@ from .brain.dopamine import dopaminergic, proximity_reward
 from .brain.rate import population_index, rate_brain, steady_state
 from .connectome.schema import Connectome
 from .experiments.olfactory import (
+    RESPONSE_THRESHOLD as KC_RESPONSE_THRESHOLD,
+)
+from .experiments.olfactory import (
     SPARSE_KC_SLOPE,
     kc_slopes,
     mushroom_body,
@@ -98,6 +101,7 @@ class HybridLoop:
         reward_scale: float = 8.0,
         kc_slope: float = SPARSE_KC_SLOPE,
         trained_odour: tuple[str, ...] = TRAINED_ODOUR,
+        control_odour: tuple[str, ...] = CONTROL_ODOUR,
         body=None,
         view: HexWorldView | None = None,
     ):
@@ -134,11 +138,9 @@ class HybridLoop:
             connectome, gain=gain, coupling_hops=coupling_hops
         )
 
-        self.odours = {
-            name: odour(connectome, glom, self.orn)
-            for name, glom in (("trained", trained_odour), ("control", CONTROL_ODOUR))
-        }
-        self.trained_odour = trained_odour
+        self.odours: dict[str, np.ndarray] = {}
+        self.set_odours(trained_odour, control_odour)
+
         #: The KC->MBON weights as they were before any training, so every
         #: step can be measured against itself rather than against a separate
         #: baseline run. A baseline taken on the odour alone is not comparable:
@@ -164,6 +166,95 @@ class HybridLoop:
         #: without the loop having to know what a recorder is.
         self.on_frame = None
         self.reset()
+
+    def set_odours(
+        self, trained: tuple[str, ...], control: tuple[str, ...] | None = None
+    ) -> None:
+        """Choose which glomeruli the two odours activate, without rebuilding.
+
+        Building a loop costs about 15 s; building an odour costs a table
+        lookup, because an odour here is nothing but a vector over the ORNs.
+        So the glomeruli can be part of what an interactive request chooses,
+        which is what makes "reward a smell the fly has never been rewarded
+        for" a thing you can ask for rather than a code change.
+
+        The pair has to be a pair. Differential conditioning measures the
+        rewarded odour against an unrewarded one that went through the same
+        network the same number of times, and if both odours are the same
+        glomeruli there is no comparison left -- so that is refused rather
+        than reported as a null result.
+
+        Overlap short of identity is allowed and is the interesting case: see
+        :meth:`kc_overlap` for the number that says whether the two are still
+        separable in the mushroom body, which is where the learning lands.
+        """
+        control = tuple(control if control is not None else self.control_odour)
+        trained = tuple(trained)
+        if set(trained) == set(control):
+            raise ValueError(
+                f"the trained and control odours are both {sorted(trained)}; "
+                "with nothing to compare against, training cannot be measured"
+            )
+        self.odours = {
+            "trained": odour(self.c, trained, self.orn),
+            "control": odour(self.c, control, self.orn),
+        }
+        self.trained_odour = trained
+        self.control_odour = control
+
+    def kc_code(self) -> dict[str, float]:
+        """How each odour lands on the Kenyon cells, and how far apart they are.
+
+        Two numbers decide whether a chosen pair of glomeruli can be
+        conditioned at all, and neither is obvious from the names:
+
+        ``trained`` / ``control``
+            The fraction of Kenyon cells the odour drives above threshold. An
+            odour no Kenyon cell responds to cannot be learned at all, and
+            **which odours those are is not predictable from the glomerulus
+            names or their sizes**. Measured on MaleCNS at the calibrated
+            slope: nine single glomeruli spanning 204 ORNs down to 14 give
+            between 0.00% and 0.07%, essentially nothing; DM1+DM4, the pair
+            this project was built on, gives 1.11% from 106 ORNs; DA1+VA1d
+            gives 0.10% from 336. Three times the input, a tenth of the code.
+            What matters is whether the glomeruli converge on shared Kenyon
+            cells, which is a fact about the wiring and has to be measured.
+
+            So this is not a check an interface can do arithmetic for. It is
+            the number a run reports back, and a choice that returns near zero
+            is a smell this fly cannot represent rather than one it failed to
+            learn.
+        ``overlap``
+            The share of the trained odour's Kenyon cells the control drives
+            too. At 1.0 the pairing depresses both identically and no amount of
+            training produces a difference -- the failure Run 9 spent a run on,
+            and the one an arbitrary glomerulus choice walks straight back
+            into. NaN when the trained odour drives nothing, because there is
+            then no set to take a share of.
+
+        Costs two network passes, about 0.3 s, so it is measured when asked for
+        rather than on every step.
+        """
+        kc = self.mb["kc"]
+        fired = {}
+        for name, smell in self.odours.items():
+            acts = self.brain.run(
+                steady_state(self._input(smell=smell), self.hops)
+            ).activations
+            fired[name] = acts[kc].max(axis=1) > KC_RESPONSE_THRESHOLD
+        n = int(fired["trained"].sum())
+        return {
+            "trained": float(fired["trained"].mean()),
+            "control": float(fired["control"].mean()),
+            "overlap": float((fired["trained"] & fired["control"]).sum() / n)
+            if n
+            else float("nan"),
+            "kenyon_cells": int(len(kc)),
+        }
+
+    def kc_overlap(self) -> float:
+        """Just the overlap of :meth:`kc_code`; NaN if no Kenyon cell responds."""
+        return self.kc_code()["overlap"]
 
     @property
     def body_has_joints(self) -> bool:

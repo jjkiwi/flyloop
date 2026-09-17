@@ -178,6 +178,87 @@ def test_an_unknown_odour_is_refused(loop):
         loop.train(1, odour_name="lavender")
 
 
+def test_the_glomeruli_can_be_changed_without_rebuilding(loop):
+    """What makes an arbitrary new smell askable for from an interface.
+
+    Building the loop costs about 15 s on the real connectome; building an
+    odour costs a table lookup, because an odour here is only a vector over
+    the ORNs. So the pair is swappable in place.
+    """
+    before = loop.odours["trained"].copy()
+    loop.set_odours(("DA1",), ("VA2",))
+    assert loop.trained_odour == ("DA1",)
+    assert loop.control_odour == ("VA2",)
+    assert not np.array_equal(loop.odours["trained"], before)
+    # The ORNs that fire are exactly that glomerulus's, and no others.
+    fired = np.flatnonzero(loop.odours["trained"])
+    types = loop.c.neurons["type"].astype(str).to_numpy()[loop.orn[fired]]
+    assert set(types) == {"ORN_DA1"}
+    loop.set_odours(("DM1", "DM4"), ("DA1", "VA2"))
+
+
+def test_an_unknown_glomerulus_names_the_ones_that_exist(loop):
+    """A silent zero would look like an odour the fly merely failed to learn."""
+    with pytest.raises(KeyError, match="ORN_lavender"):
+        loop.set_odours(("lavender",))
+
+
+def test_an_odour_cannot_be_its_own_control(loop):
+    """With both odours the same, the training has nothing to be measured
+    against and a null result is guaranteed by the setup, not observed."""
+    with pytest.raises(ValueError, match="nothing to compare"):
+        loop.set_odours(("DM1", "DM4"), ("DM4", "DM1"))
+
+
+def test_kenyon_cell_overlap_is_total_when_the_odours_are_shared(loop):
+    """The number that says whether a chosen pair is separable at all.
+
+    Plasticity acts on KC->MBON, so two odours can only be told apart to the
+    extent their Kenyon cells differ. Here the two odours are given one
+    glomerulus each out of a pair that converges, and the fixture's ORNs run
+    onto distinct Kenyon cells, so the overlap is the thing being asserted --
+    not that it is low, but that it is measured.
+    """
+    loop.set_odours(("DM1",), ("DA1",))
+    shared = loop.kc_overlap()
+    loop.set_odours(("DM1",), ("DM1", "DA1"))
+    superset = loop.kc_overlap()
+    # The control now contains the trained odour outright, so every Kenyon
+    # cell the trained odour drives is also driven by the control.
+    assert superset >= shared
+    assert superset == pytest.approx(1.0)
+    loop.set_odours(("DM1", "DM4"), ("DA1", "VA2"))
+
+
+def test_the_kenyon_cell_code_reports_both_odours_and_their_total(loop):
+    """What the interface shows instead of letting a choice fail silently."""
+    loop.set_odours(("DM1", "DM4"), ("DA1", "VA2"))
+    code = loop.kc_code()
+    assert set(code) == {"trained", "control", "overlap", "kenyon_cells"}
+    assert code["kenyon_cells"] == len(loop.mb["kc"])
+    assert 0.0 <= code["trained"] <= 1.0
+    assert 0.0 <= code["control"] <= 1.0
+
+
+def test_overlap_is_not_a_number_when_no_kenyon_cell_responds(loop, monkeypatch):
+    """NaN rather than 0.0: there is no set to take a share of, and reporting
+    zero would read as two perfectly separable odours instead of one the fly
+    cannot represent at all.
+
+    On MaleCNS this is the common case, not a corner: a single glomerulus
+    drives between 0.00% and 0.07% of Kenyon cells whichever one it is. The
+    threshold is raised here rather than the network weakened, because that
+    reaches the branch deterministically -- an earlier version of this test
+    zeroed the plastic weights instead, which are KC->MBON and leave the
+    Kenyon cells firing exactly as before, so it asserted nothing and passed.
+    """
+    monkeypatch.setattr("flyloop.hybrid.KC_RESPONSE_THRESHOLD", 1e9)
+    code = loop.kc_code()
+    assert code["trained"] == 0.0
+    assert np.isnan(code["overlap"])
+    assert np.isnan(loop.kc_overlap())
+
+
 def test_reset_clears_the_log_but_not_the_learning(loop):
     loop.train(4, odour_name="trained")
     depressed = loop.plastic.depression()

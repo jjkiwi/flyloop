@@ -18,3 +18,4 @@ docs/figures/rig/
 
 # Recorded episodes: 8.9 MB of binaries that `flyloop record` rebuilds.
 app/data/
+flyloop-demo.html

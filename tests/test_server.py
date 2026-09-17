@@ -67,3 +67,57 @@ def test_the_cache_key_separates_what_does_not():
     base = Spec.from_json({})
     for field, value in (("gain", 50.0), ("coupling_hops", 4), ("body", "physics")):
         assert Spec.from_json({field: value}).key() != base.key(), field
+
+
+def test_glomeruli_default_to_the_documented_pair():
+    s = Spec.from_json({})
+    assert s.trained_glomeruli == ("DM1", "DM4")
+    assert s.control_glomeruli == ("DA1", "VA2")
+
+
+def test_glomeruli_come_from_the_request():
+    s = Spec.from_json({"trained_glomeruli": ["V", "DL5"]})
+    assert s.trained_glomeruli == ("V", "DL5")
+
+
+def test_a_single_glomerulus_may_be_sent_as_a_bare_string():
+    """A hand-written request is likelier to send "DA1" than ["DA1"]."""
+    assert Spec.from_json({"trained_glomeruli": "DA1"}).trained_glomeruli == ("DA1",)
+
+
+def test_whitespace_and_repeats_are_tidied_rather_than_refused():
+    """Order carries no meaning here -- an odour is a set of ORNs."""
+    s = Spec.from_json({"trained_glomeruli": [" DM1 ", "DM1", "DM4", ""]})
+    assert s.trained_glomeruli == ("DM1", "DM4")
+
+
+def test_an_empty_odour_is_refused():
+    with pytest.raises(ValueError, match="at least one glomerulus"):
+        Spec.from_json({"trained_glomeruli": []})
+
+
+def test_too_many_glomeruli_are_refused():
+    """The whole antennal lobe at once is not an odour, it is every odour."""
+    with pytest.raises(ValueError, match="at most"):
+        Spec.from_json({"control_glomeruli": [f"G{i}" for i in range(20)]})
+
+
+def test_identical_odours_are_refused():
+    """Differential conditioning needs something unrewarded to compare against;
+    with both odours the same, a null result would be guaranteed by the request
+    rather than measured."""
+    with pytest.raises(ValueError, match="nothing to be measured against"):
+        Spec.from_json(
+            {"trained_glomeruli": ["DM1", "DM4"], "control_glomeruli": ["DM4", "DM1"]}
+        )
+
+
+def test_an_unknown_training_odour_is_refused():
+    with pytest.raises(ValueError, match="unknown train_odour"):
+        Spec.from_json({"train_odour": "none"})
+
+
+def test_the_cache_key_ignores_the_glomeruli():
+    """Swapping an odour is a table lookup; it must not cost a 15 s rebuild."""
+    a = Spec.from_json({"trained_glomeruli": ["V"], "control_glomeruli": ["DA1"]})
+    assert a.key() == Spec.from_json({}).key()

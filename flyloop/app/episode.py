@@ -180,6 +180,11 @@ def record_episode(
         "body": type(loop.body).__name__,
         "train_odour": train_odour,
         "behave_odour": behave_odour or "none",
+        # Which smell each of those names meant. An episode recorded a year
+        # from now with a different glomerulus choice must not be readable as
+        # the same experiment just because both say "trained".
+        "trained_glomeruli": list(getattr(loop, "trained_odour", ())),
+        "control_glomeruli": list(getattr(loop, "control_odour", ())),
         "spec": getattr(loop, "_spec", None),
         "live_types": int(live.sum()),
         "all_types": int(len(live)),
@@ -218,6 +223,9 @@ def write_index(out_dir: str | Path) -> Path:
                 "frames": m.get("frames"),
                 "body": m.get("body"),
                 "behave_odour": m.get("behave_odour"),
+                "trained_glomeruli": m.get("trained_glomeruli"),
+                "control_glomeruli": m.get("control_glomeruli"),
+                "kc_code": m.get("kc_code"),
                 "live_types": m.get("live_types"),
             }
         )

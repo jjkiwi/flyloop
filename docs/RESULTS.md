@@ -1737,7 +1737,69 @@ upstream of where this project injects.
 
 ---
 
-# Open questions, as of Run 16
+## Run 17 — choosing the smell, and what the choice turns out to cost
+
+The interface now picks the glomeruli. MaleCNS has 53 of them across 2,635
+ORNs, and each of the two odours -- the one dopamine is paired with, and the
+unrewarded one it is measured against -- is any subset of those, chosen in the
+browser. Nothing about the loop changed: an odour here is a vector over the
+ORNs, so swapping one costs a table lookup rather than the 15 s model rebuild
+that changing the gain or the coupling route still costs. A run stays at about
+10 s.
+
+That was the whole intended change. Measuring it produced a finding that was
+not intended, and it constrains what the feature is good for.
+
+**Kenyon cell recruitment does not follow receptor count.** The fraction of
+Kenyon cells an odour drives above threshold, at the calibrated sparse slope,
+measured on the live MaleCNS graph:
+
+| odour | ORNs | Kenyon cells driven |
+| --- | ---: | ---: |
+| DA1 alone | 204 | 0.00% |
+| VA1d alone | 132 | 0.02% |
+| VL2a alone | 98 | 0.07% |
+| VM6l alone | 14 | 0.00% |
+| DA1 + VA1d | 336 | 0.10% |
+| **DM1 + DM4** (this project's pair) | **106** | **1.11%** |
+| DA1 + VA1d + VA1v | 466 | 0.32% |
+| DA1 + VA1d + VA1v + DL3 + VL2a | 667 | 1.48% |
+
+DA1+VA1d is 3.2x the receptor input of DM1+DM4 and drives 1/11th of the code.
+Nine single glomeruli spanning a fifteenfold range of size all drive
+essentially nothing. So the quantity that decides whether a chosen odour can be
+conditioned is not how much input it delivers but whether its glomeruli
+converge on *shared* Kenyon cells -- coincidence, which is what the sparse code
+is built to detect and what a picker listing names and sizes cannot predict.
+
+**Why this matters for the feature rather than being a curiosity.** An odour no
+Kenyon cell responds to produces a training phase that runs, reports a
+depression, and changes nothing -- indistinguishable, from the outside, from a
+fly that was trained and did not learn. So every run now reports the Kenyon
+cell fractions and their overlap, measured *before* training so it cannot be
+read as something the pairing did, and the picker warns on a single-glomerulus
+odour. The number is the first thing to read, ahead of any learned effect.
+
+**What did not change.** The coupling is still 0.53% direct, the gain still
+has to be on screen, and a learned effect at gain 1 is still invisible. Picking
+a novel odour does not make the mushroom body's door into steering any wider;
+it makes *which* smell goes through that door a thing you choose.
+
+**Honest limits.** The overlap statistic is measured at this project's slope
+and input construction, and is not the ~5% sparseness figure the calibration
+table reports for the standalone conditioning experiment -- that one drives the
+network from the ORNs alone, this one from vision, PAM and ORNs together. The
+two are not comparable and neither supersedes the other. Nothing here tests
+whether a high-recruitment novel odour actually conditions *better*; that is a
+sweep, and it is now cheap enough to run.
+
+**Next.** Several odour pairs matched for Kenyon cell recruitment rather than
+for glomerulus count -- open question 6, which this makes tractable for the
+first time, since a matched pair can now be searched for instead of assumed.
+
+---
+
+# Open questions, as of Run 17
 
 Each run's **Next** section records what looked worth doing *at the time*, and
 several of those have since been done elsewhere in this log. Rather than edit
@@ -1784,7 +1846,11 @@ in 1.5 s and the run ends. Nothing tests approach to contact.
 trade off and neither locates the optimum. 8 trials at lr 0.2 depresses 1.05%.
 
 **6. Several odour pairs matched for sparseness.** Runs 7 and 9: one pair, and
-odour B's sign flips between learning rates.
+odour B's sign flips between learning rates. Run 17 makes this tractable and
+sharpens it: matched for *Kenyon cell recruitment*, not for glomerulus count,
+because those turn out to be unrelated -- and recruitment can now be measured
+for any subset of the 53 glomeruli without rebuilding the model, so a matched
+pair can be searched for rather than assumed.
 
 **7. `relabel_neurons` and `scramble_signs` on the embodied run.** Run 10 used
 only the rewired control, for time.

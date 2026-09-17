@@ -71,10 +71,23 @@
       <label>odour while walking
         <select id="f-odour">
           <option value="none">none</option>
-          <option value="trained" selected>trained (DM1, DM4)</option>
-          <option value="control">control (DA1, VA2)</option>
+          <option value="trained" selected>the trained one</option>
+          <option value="control">the control one</option>
         </select>
         <span class="hint">vision cannot be learned here; only smell can</span>
+      </label>
+      <label class="glom-field">trained odour &mdash; glomeruli
+        <select id="f-glom-trained" multiple size="7"></select>
+        <span class="hint" id="hint-glom-trained">
+          the smell dopamine is paired with; ctrl-click for several
+        </span>
+      </label>
+      <label class="glom-field">control odour &mdash; glomeruli
+        <select id="f-glom-control" multiple size="7"></select>
+        <span class="hint" id="hint-glom-control">
+          the same smell unrewarded, so the first has something to be measured
+          against
+        </span>
       </label>
       <label>conditioning trials
         <input type="number" id="f-train" min="0" max="40" step="1" value="8">

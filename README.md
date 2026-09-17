@@ -218,6 +218,36 @@ During the training phase the fly is on a rig and its joint angles are NaN. The
 player hides the body and shows the mushroom body instead; posing a fly from
 NaN draws a corpse sliding across the floor and reads as a physics bug.
 
+### You choose the smell
+
+```bash
+flyloop --data-root ~/connectome_data_prep serve
+```
+
+`flyloop serve` adds a run endpoint behind the same page, so the stimulus is a
+form rather than a command line: bearing, distance, the coupling gain, and
+**which glomeruli each of the two odours is made of**, picked from the 53 the
+loaded connectome actually has. Rewarding a smell the fly has never been
+rewarded for is a selection, not a code change. A run takes about 10 s, because
+the 15 s of model building does not depend on what the fly has learned or what
+it is looking at, so one loop is kept and only the learning is reset.
+
+Every run reports **how the two odours landed on the Kenyon cells**, and that
+number is the one to read before anything else:
+
+| odour | ORNs | Kenyon cells driven |
+| --- | ---: | ---: |
+| any single glomerulus (nine measured, DA1 down to VM6l) | 204–14 | 0.00–0.07% |
+| DM1 + DM4 — the pair this project was built on | 106 | 1.11% |
+| DA1 + VA1d | 336 | 0.10% |
+| DA1 + VA1d + VA1v + DL3 + VL2a | 667 | 1.48% |
+
+Three times the input, a tenth of the code. What decides it is whether the
+chosen glomeruli converge on shared Kenyon cells, which is a fact about the
+wiring and cannot be guessed from the names or the sizes. An odour that drives
+close to nothing is a smell this fly cannot represent, not one it failed to
+learn, and the difference is invisible unless the number is on screen.
+
 ## The claims are tested, not just written
 
 ```bash

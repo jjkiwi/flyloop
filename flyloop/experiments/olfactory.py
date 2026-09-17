@@ -56,6 +56,33 @@ def olfactory_receptors(c: Connectome) -> np.ndarray:
     return rows
 
 
+def glomeruli(c: Connectome) -> pd.Series:
+    """Every antennal lobe glomerulus this connectome can present an odour to.
+
+    The name is whatever follows ``ORN_`` in the cell type, and the value is how
+    many olfactory receptor neurons carry it -- which is the only thing that
+    sets how hard that glomerulus drives the model, since :func:`odour` gives
+    each of its ORNs the same unit input.
+
+    MaleCNS has 53 of them across 2,635 ORNs, and they are far from equal:
+    DA1 alone has 204 ORNs, VM6l has 14. An odour built from DA1 is therefore
+    about fifteen times the input current of one built from VM6l, before
+    anything in the circuit has happened. Anyone choosing glomeruli in an
+    interface needs that number in front of them, which is why it is returned
+    rather than just the list of names.
+
+    Sorted by count, descending, so a picker shows the strongest first.
+    """
+    types = c.neurons["type"].astype(str)
+    orn = types[types.str.startswith("ORN_")]
+    if len(orn) == 0:
+        raise KeyError(f"connectome {c.name!r} has no ORN_<glomerulus> types")
+    counts = orn.str.slice(4).value_counts()
+    counts.index.name = "glomerulus"
+    counts.name = "orns"
+    return counts
+
+
 def mushroom_body(c: Connectome) -> dict[str, np.ndarray]:
     """Kenyon cells and mushroom body output neurons."""
     types = c.neurons["type"].astype(str)
@@ -164,14 +191,32 @@ def kc_slopes(c: Connectome, slope: float = SPARSE_KC_SLOPE) -> dict[str, float]
     return {t: slope for t in sorted(types[types.str.startswith("KC")].unique())}
 
 
-def odour(c: Connectome, glomeruli: tuple[str, ...], receptors: np.ndarray) -> np.ndarray:
-    """Input vector over ``receptors`` for an odour activating named glomeruli."""
+def odour(
+    c: Connectome, glomeruli: tuple[str, ...], receptors: np.ndarray
+) -> np.ndarray:
+    """Input vector over ``receptors`` for an odour activating named glomeruli.
+
+    Every ORN of a named glomerulus gets 1.0 and every other receptor gets 0,
+    so a glomerulus contributes in proportion to how many ORNs it has. See
+    :func:`glomeruli` for those counts; they differ by a factor of fifteen
+    across MaleCNS and are not a detail.
+
+    An unknown name is an error rather than a silent zero, because a silent
+    zero makes an odour that is missing one of its components look like an
+    odour the fly merely failed to learn.
+    """
+    if not glomeruli:
+        raise ValueError("an odour needs at least one glomerulus")
     want = c.neurons["type"].astype(str).to_numpy()[receptors]
     v = np.zeros(len(receptors), dtype=np.float32)
     for g in glomeruli:
         hit = np.flatnonzero(want == f"ORN_{g}")
         if len(hit) == 0:
-            raise KeyError(f"no ORN_{g} neurons; check the glomerulus name")
+            known = sorted(str(t)[4:] for t in set(want) if str(t).startswith("ORN_"))
+            raise KeyError(
+                f"no ORN_{g} neurons in {c.name!r}; "
+                f"the {len(known)} glomeruli it has are {', '.join(known)}"
+            )
         v[hit] = 1.0
     return v
 

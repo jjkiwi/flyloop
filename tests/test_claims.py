@@ -209,3 +209,57 @@ def test_a_centred_object_still_leans_right(malecns):
     out = lateral_bias(tuning_curve(malecns))
     assert out["centre_bias"] > 0
     assert out["centre_bias_fraction"] == pytest.approx(0.14, abs=0.04)
+
+
+def test_malecns_has_53_glomeruli_spanning_fifteenfold(malecns):
+    """The claim in :func:`flyloop.experiments.olfactory.glomeruli`, and the
+    reason its count is shown in the interface.
+
+    An odour built from DA1 is about fifteen times the input current of one
+    built from VM6l before anything in the circuit has happened, so a picker
+    that lists names alone invites a comparison between two things that were
+    never comparable.
+    """
+    from flyloop.experiments.olfactory import glomeruli
+
+    counts = glomeruli(malecns)
+    assert len(counts) == 53
+    assert counts.sum() == 2635
+    assert counts.index[0] == "DA1" and counts.iloc[0] == 204
+    assert counts.iloc[-1] == 14
+    assert counts.iloc[0] / counts.iloc[-1] == pytest.approx(14.6, abs=0.1)
+
+
+def test_kenyon_cell_response_does_not_follow_receptor_count(malecns):
+    """The table in README.md, and the reason the interface reports this number
+    instead of computing it from the glomerulus names.
+
+    DA1+VA1d is three times the receptor input of DM1+DM4 and drives a tenth of
+    the Kenyon cells. Whether a chosen pair of glomeruli can be conditioned at
+    all is a fact about which Kenyon cells they converge on, so a picker that
+    lists names and sizes cannot tell you, and a run has to.
+    """
+    from flyloop.hybrid import HybridLoop
+
+    loop = HybridLoop(malecns)
+
+    def driven(glomeruli) -> float:
+        # Anything differing from the odour under test serves as the control;
+        # only the trained fraction is being asserted here.
+        other = ("DM4",) if "DM4" not in glomeruli else ("DA1",)
+        loop.set_odours(tuple(glomeruli), other)
+        return loop.kc_code()["trained"]
+
+    # A single glomerulus drives essentially nothing, whichever one it is.
+    for one in ("DA1", "VL2a", "VM6l"):
+        assert driven((one,)) < 0.001, one
+
+    built_on = driven(("DM1", "DM4"))
+    bigger = driven(("DA1", "VA1d"))
+    assert built_on == pytest.approx(0.0111, abs=0.001)
+    assert bigger == pytest.approx(0.0011, abs=0.001)
+    # Three times the receptors, an order of magnitude less of the code.
+    assert built_on > 5 * bigger
+    assert driven(("DA1", "VA1d", "VA1v", "DL3", "VL2a")) == pytest.approx(
+        0.0148, abs=0.001
+    )

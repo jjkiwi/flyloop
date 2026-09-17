@@ -24,6 +24,7 @@ only thing that differs is what the descending command moves.
 from __future__ import annotations
 
 import json
+import math
 import threading
 import time
 from dataclasses import dataclass
@@ -31,13 +32,49 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from ..experiments.embodied import target_at
+from ..hybrid import CONTROL_ODOUR, TRAINED_ODOUR
 
 #: Default arena geometry, matching the recorded episodes.
 DEFAULT_DISTANCE = 25.0
 DEFAULT_RADIUS = 2.5
 
+#: More glomeruli than this in one odour is almost certainly a mistake -- the
+#: whole antennal lobe at once is not an odour, it is every odour.
+MAX_GLOMERULI = 12
+
 #: A run this long on the physics body takes a minute and a half.
 SLOW_BODY_WARNING = 20
+
+
+def _glomeruli_field(value, which: str) -> tuple[str, ...]:
+    """Coerce whatever JSON supplied into a tuple of glomerulus names.
+
+    A browser sends a list, a saved manifest round-trips a list, and a hand
+    written request might send one string. All three are accepted; anything
+    else, and anything empty, is refused here rather than deep inside the
+    network where the failure reads as a flat odour response.
+
+    Names are *not* checked against a hard coded list -- :meth:`FlyService.run`
+    checks them against the connectome that is actually loaded, which is the
+    only list that is true.
+    """
+    if isinstance(value, str):
+        value = [value]
+    try:
+        names = [str(g).strip() for g in value]
+    except TypeError as exc:
+        raise ValueError(f"{which} glomeruli must be a list of names") from exc
+    names = [g for g in names if g]
+    if not names:
+        raise ValueError(f"the {which} odour needs at least one glomerulus")
+    if len(names) > MAX_GLOMERULI:
+        raise ValueError(
+            f"the {which} odour asks for {len(names)} glomeruli; "
+            f"at most {MAX_GLOMERULI}"
+        )
+    # Order carries no meaning -- the odour vector is a set of ORNs -- so a
+    # repeat is silently one glomerulus rather than an error.
+    return tuple(dict.fromkeys(names))
 
 
 @dataclass
@@ -54,6 +91,13 @@ class Spec:
     gain: float = 1.0
     coupling_hops: int = 1
     body: str = "kinematic"
+    #: Which glomeruli each of the two odours is made of. "trained" is the one
+    #: dopamine is paired with; "control" is the one that is not, and exists so
+    #: the first can be measured against something. Names are validated against
+    #: the loaded connectome, not against a list kept here -- MaleCNS has 53
+    #: and a different dataset will have different ones.
+    trained_glomeruli: tuple[str, ...] = TRAINED_ODOUR
+    control_glomeruli: tuple[str, ...] = CONTROL_ODOUR
 
     @classmethod
     def from_json(cls, raw: dict) -> "Spec":
@@ -66,10 +110,19 @@ class Spec:
             raise ValueError(f"body must be kinematic or physics, not {spec.body!r}")
         if spec.odour not in (None, "none", "trained", "control"):
             raise ValueError(f"unknown odour {spec.odour!r}")
+        if spec.train_odour not in ("trained", "control"):
+            raise ValueError(f"unknown train_odour {spec.train_odour!r}")
         if not 1 <= spec.steps <= 400:
             raise ValueError("steps must be between 1 and 400")
         if not 0 <= spec.train_trials <= 100:
             raise ValueError("train_trials must be between 0 and 100")
+        spec.trained_glomeruli = _glomeruli_field(spec.trained_glomeruli, "trained")
+        spec.control_glomeruli = _glomeruli_field(spec.control_glomeruli, "control")
+        if set(spec.trained_glomeruli) == set(spec.control_glomeruli):
+            raise ValueError(
+                "the trained and control odours are the same glomeruli, so "
+                "training would have nothing to be measured against"
+            )
         if spec.odour == "none":
             spec.odour = None
         return spec
@@ -97,6 +150,24 @@ class FlyService:
             self.status = "loading connectome"
             self._connectome = load_dataset(self.data_root, self.dataset, matrix="inprop")
         return self._connectome
+
+    def glomeruli(self) -> dict:
+        """Every odour the loaded connectome can actually present, with counts.
+
+        Loads the connectome if nothing has yet, which costs about 25 s the
+        first time -- so the browser asks for this while the page is coming up
+        rather than when the picker is opened.
+        """
+        from ..experiments.olfactory import glomeruli
+
+        counts = glomeruli(self.connectome())
+        return {
+            "connectome": self.connectome().name,
+            "glomeruli": [
+                {"name": str(name), "orns": int(n)} for name, n in counts.items()
+            ],
+            "defaults": {"trained": list(TRAINED_ODOUR), "control": list(CONTROL_ODOUR)},
+        }
 
     def loop(self, spec: Spec):
         key = spec.key()
@@ -129,7 +200,20 @@ class FlyService:
             loop = self.loop(spec)
             loop.target = target_at(spec.bearing, distance=spec.distance)
             loop.target.radius = spec.radius
+            # Cheap -- an odour is a vector over the ORNs -- so the glomeruli
+            # are per-request and do not force the 15 s rebuild that gain and
+            # coupling_hops do. An unknown name raises KeyError here, which the
+            # handler turns into a 400 with the list of names that do exist.
+            loop.set_odours(spec.trained_glomeruli, spec.control_glomeruli)
             loop.reset_learning()
+            # Before training, not after: this is a property of the glomeruli,
+            # and measuring it on the trained weights would invite reading it
+            # as something the pairing did. NaN -- no Kenyon cell fires at all
+            # -- becomes null, because NaN is not JSON a browser will parse.
+            code = {
+                k: None if isinstance(v, float) and math.isnan(v) else v
+                for k, v in loop.kc_code().items()
+            }
             # Carried into the manifest so the form can reopen showing the
             # stimulus that produced whatever is on screen.
             loop._spec = spec.__dict__
@@ -142,6 +226,7 @@ class FlyService:
                 train_odour=spec.train_odour,
                 behave_odour=spec.odour,
             )
+            episode.manifest["kc_code"] = code
             name = f"run{int(started)}"
             episode.save(out_dir / "episodes" / name)
             write_index(out_dir)
@@ -151,6 +236,13 @@ class FlyService:
                 "path": f"episodes/{name}/",
                 "seconds": round(time.time() - started, 1),
                 "spec": spec.__dict__,
+                # How the two odours land on the Kenyon cells. An odour no
+                # Kenyon cell responds to cannot be learned, and two odours
+                # that overlap completely cannot be told apart -- both are
+                # properties of the glomeruli chosen and not of the training,
+                # so they are reported next to the run that used them rather
+                # than left to be discovered.
+                "kc_code": code,
                 **{
                     k: episode.manifest[k]
                     for k in ("gain", "coupling_share", "coupling_hops", "live_types")
@@ -177,6 +269,11 @@ def make_handler(service: FlyService, root: Path):
         def do_GET(self):  # noqa: N802 - required name
             if self.path == "/api/status":
                 return self._json(200, {"status": service.status})
+            if self.path == "/api/glomeruli":
+                try:
+                    return self._json(200, service.glomeruli())
+                except Exception as exc:  # pragma: no cover - surfaced to browser
+                    return self._json(500, {"error": f"{type(exc).__name__}: {exc}"})
             return super().do_GET()
 
         def do_POST(self):  # noqa: N802 - required name
@@ -189,6 +286,16 @@ def make_handler(service: FlyService, root: Path):
                 return self._json(400, {"error": str(exc)})
             try:
                 return self._json(200, service.run(spec, root / "data"))
+            except (KeyError, ValueError) as exc:
+                # A glomerulus this connectome does not have, or a pair with
+                # nothing to compare. Both are the request's fault, and the
+                # message already names what would have worked.
+                service.status = "idle"
+                # str() of a KeyError is the repr of its argument, so the
+                # message arrives at the browser wrapped in quotes it did not
+                # have. Take the argument itself.
+                message = exc.args[0] if exc.args else str(exc)
+                return self._json(400, {"error": str(message)})
             except Exception as exc:  # pragma: no cover - surfaced to the browser
                 service.status = "idle"
                 return self._json(500, {"error": f"{type(exc).__name__}: {exc}"})

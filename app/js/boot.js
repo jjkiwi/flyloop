@@ -66,10 +66,33 @@ async function main() {
   window.__flyloop = D; // for poking at from the console
 
   const man = D.episode;
+  // Name the glomeruli, not just "trained". Two episodes both labelled
+  // "trained" can be two different smells now that the choice is in the
+  // interface, and the provenance line is where that has to be visible.
+  const smell = (which) => {
+    const g = man[`${which}_glomeruli`];
+    return g && g.length ? g.join(", ") : `the ${which} odour`;
+  };
+  // How the chosen odours landed on the Kenyon cells. An odour none of them
+  // respond to cannot be learned at all, which is a property of the glomeruli
+  // and is worth more than a percentage nobody reads.
+  const kc = man.kc_code;
+  const overlap = !kc
+    ? ""
+    : kc.overlap == null
+      ? ` \u2014 no Kenyon cell responds to the trained odour, so nothing about it can be learned`
+      : `, Kenyon cells ${(kc.trained * 100).toFixed(1)}% trained / ` +
+        `${(kc.control * 100).toFixed(1)}% control, ${(kc.overlap * 100).toFixed(0)}% shared`;
   $("provenance").textContent =
     `${man.connectome}, ${man.neurons.toLocaleString()} neurons — ` +
     `${man.body}, ${man.frames} frames at ${man.control_dt}s, ` +
-    `train odour "${man.train_odour}", behaving in "${man.behave_odour}"`;
+    `trained on ${smell(man.train_odour)}, behaving in ` +
+    (man.behave_odour === "none"
+      ? "no odour"
+      : man.behave_odour === man.train_odour
+        ? "that same odour"
+        : smell(man.behave_odour)) +
+    overlap;
 
   $("gain-value").textContent = man.gain.toFixed(man.gain < 10 ? 1 : 0) + "×";
   $("gain-note").textContent =
@@ -551,6 +574,133 @@ function wireTimeline(D, onFrame) {
  * two WebGL scenes and rebuilding them from a new episode -- is a lot of state
  * to get wrong for no visible gain.
  */
+/* Which glomeruli the two odours are made of.
+
+   The list is not hard coded: `/api/glomeruli` reads it off the connectome
+   that is actually loaded, because a different dataset has different ones and
+   a name that is merely plausible produces a flat odour, not an error the user
+   would see. When there is no run endpoint -- a plain static server, or the
+   single-file demo -- the picker falls back to whatever the episode on screen
+   was recorded with, and says so. */
+
+async function loadGlomeruli() {
+  try {
+    const res = await fetch("./api/glomeruli");
+    if (!res.ok) throw new Error(res.statusText);
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+function fillGlomeruli(sel, list, chosen) {
+  sel.textContent = "";
+  const want = new Set(chosen);
+  for (const g of list) {
+    const opt = document.createElement("option");
+    opt.value = g.name;
+    // The ORN count is the only thing that sets how hard a glomerulus drives
+    // the model, and it spans 204 down to 14 across MaleCNS. Showing it turns
+    // "pick a smell" into a choice with a magnitude attached.
+    opt.textContent = g.orns ? `${g.name}  (${g.orns} ORNs)` : g.name;
+    opt.selected = want.has(g.name);
+    sel.appendChild(opt);
+  }
+  revealSelection(sel);
+}
+
+/* With 53 glomeruli and DM1 eleventh by size, the current choice is off screen
+   unless it is scrolled to -- and a picker that looks empty is one people
+   re-pick from, changing the stimulus they meant to keep.
+
+   A hidden element has no offsets, so this does nothing while the panel is
+   closed and has to be called again when it opens. */
+function revealSelection(sel) {
+  const first = sel.querySelector("option:checked");
+  if (!first || !sel.clientHeight) return;
+  sel.scrollTop = Math.max(0, first.offsetTop - sel.clientHeight / 2);
+}
+
+const chosenGlomeruli = (sel) =>
+  Array.from(sel.selectedOptions).map((o) => o.value);
+
+function wireGlomeruli(D, spec) {
+  const trained = $("f-glom-trained");
+  const control = $("f-glom-control");
+  const ep = D.episode;
+  const fromEpisode = {
+    trained: spec?.trained_glomeruli || ep.trained_glomeruli || ["DM1", "DM4"],
+    control: spec?.control_glomeruli || ep.control_glomeruli || ["DA1", "VA2"],
+  };
+
+  // Something usable before the fetch lands, so the form is never empty.
+  const stub = [...fromEpisode.trained, ...fromEpisode.control].map((name) => ({ name }));
+  fillGlomeruli(trained, stub, fromEpisode.trained);
+  fillGlomeruli(control, stub, fromEpisode.control);
+
+  // The pair has to be a pair: identical odours leave the training with
+  // nothing to be measured against, which the server refuses. Say so here
+  // instead, before a run is spent finding out.
+  const check = () => {
+    const a = chosenGlomeruli(trained), b = chosenGlomeruli(control);
+    const same = a.length === b.length && a.every((g) => b.includes(g));
+    const shared = a.filter((g) => b.includes(g));
+    const note = $("hint-glom-trained");
+    const run = $("stim-run");
+    if (run.dataset.running === "1") return;
+    if (!a.length || !b.length) {
+      note.textContent = "each odour needs at least one glomerulus";
+      note.className = "hint glom-warn";
+      run.disabled = true;
+    } else if (same) {
+      note.textContent =
+        "both odours are the same glomeruli \u2014 nothing to measure the training against";
+      note.className = "hint glom-warn";
+      run.disabled = true;
+    } else {
+      // Measured on MaleCNS: nine single glomeruli, from the largest to the
+      // smallest, drive between 0.00% and 0.07% of Kenyon cells -- essentially
+      // nothing, so nothing about such an odour can be learned. The run is
+      // allowed and reports the real number; the warning is not optional,
+      // because the result would otherwise read as a fly that failed to learn
+      // rather than a smell it cannot represent.
+      const thin = a.length < 2 || b.length < 2;
+      const orns = (sel) =>
+        Array.from(sel.selectedOptions)
+          .reduce((n, o) => n + (Number(o.textContent.match(/\((\d+)/)?.[1]) || 0), 0);
+      const n = orns(trained);
+      const size = n ? ` (${n} ORNs)` : "";
+      note.textContent = thin
+        ? `a single glomerulus drives almost no Kenyon cells, so there is little to learn about it \u2014 two or more is the usual choice`
+        : shared.length
+          ? `the smell dopamine is paired with${size}; shares ${shared.join(", ")} with the control`
+          : `the smell dopamine is paired with${size}; ctrl-click for several`;
+      note.className = thin ? "hint glom-warn" : "hint";
+      run.disabled = false;
+    }
+  };
+  trained.addEventListener("change", check);
+  control.addEventListener("change", check);
+  check();
+
+  loadGlomeruli().then((data) => {
+    if (!data) {
+      $("hint-glom-control").textContent =
+        "no run endpoint here, so only this episode's glomeruli are listed";
+      return;
+    }
+    fillGlomeruli(trained, data.glomeruli, fromEpisode.trained);
+    fillGlomeruli(control, data.glomeruli, fromEpisode.control);
+    $("hint-glom-control").innerHTML =
+      `the same smell unrewarded, so the first has something to be measured ` +
+      `against <span class="glom-count">(${data.glomeruli.length} in ` +
+      `${data.connectome})</span>`;
+    check();
+  });
+
+  return { trained, control };
+}
+
 function wireStimulus(D) {
   const panel = $("stim-panel");
   const toggle = $("stim-toggle");
@@ -564,6 +714,10 @@ function wireStimulus(D) {
   toggle.addEventListener("click", () => {
     panel.hidden = !panel.hidden;
     toggle.textContent = panel.hidden ? "set a stimulus" : "hide";
+    if (!panel.hidden) {
+      // Only now do the lists have a height to scroll within.
+      for (const id of ["f-glom-trained", "f-glom-control"]) revealSelection($(id));
+    }
   });
 
   const bearing = $("f-bearing");
@@ -591,6 +745,8 @@ function wireStimulus(D) {
     showBearing();
   }
 
+  const glom = wireGlomeruli(D, spec);
+
   const estimate = () => {
     const steps = Number($("f-steps").value) + Number($("f-train").value);
     const per = $("f-body").value === "physics" ? 2.0 : 0.29;
@@ -610,6 +766,7 @@ function wireStimulus(D) {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     runBtn.disabled = true;
+    runBtn.dataset.running = "1";
     const began = performance.now();
     const tick = setInterval(() => {
       const s = ((performance.now() - began) / 1000).toFixed(0);
@@ -630,6 +787,8 @@ function wireStimulus(D) {
           gain: Number($("f-gain").value),
           coupling_hops: Number($("f-hops").value),
           body: $("f-body").value,
+          trained_glomeruli: chosenGlomeruli(glom.trained),
+          control_glomeruli: chosenGlomeruli(glom.control),
         }),
       });
       const out = await res.json();
@@ -642,6 +801,7 @@ function wireStimulus(D) {
       // A failed run is usually a server that is not the run endpoint -- the
       // plain static server has no /api/run -- so say which one is in front.
       status.textContent = `failed: ${err.message}. Started with \`flyloop serve\`?`;
+      runBtn.dataset.running = "0";
       runBtn.disabled = false;
     }
   });

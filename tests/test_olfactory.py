@@ -10,6 +10,7 @@ from flyloop.experiments.olfactory import (
     RESPONSE_THRESHOLD,
     SPARSE_KC_SLOPE,
     ConditioningResult,
+    glomeruli,
     kc_slopes,
     mushroom_body,
     odour,
@@ -78,6 +79,46 @@ def test_unknown_glomerulus_is_rejected():
     c = _mb_connectome()
     with pytest.raises(KeyError, match="ORN_ZZ9"):
         odour(c, ("ZZ9",), olfactory_receptors(c))
+
+
+def test_the_rejection_names_the_glomeruli_that_do_exist():
+    """Once the choice is in an interface, "check the glomerulus name" is not
+    help; the list of names that would have worked is."""
+    c = _mb_connectome()
+    with pytest.raises(KeyError, match="DA1, DM1"):
+        odour(c, ("ZZ9",), olfactory_receptors(c))
+
+
+def test_an_odour_of_nothing_is_rejected():
+    c = _mb_connectome()
+    with pytest.raises(ValueError, match="at least one glomerulus"):
+        odour(c, (), olfactory_receptors(c))
+
+
+def test_glomeruli_are_listed_with_their_receptor_counts():
+    """The count is not decoration: every ORN of a glomerulus gets the same
+    unit input, so the count *is* how hard that glomerulus drives the model."""
+    counts = glomeruli(_mb_connectome())
+    assert sorted(counts.index) == ["DA1", "DM1"]
+    assert counts["DM1"] == 2 and counts["DA1"] == 2
+    assert counts.name == "orns"
+
+
+def test_glomeruli_are_sorted_by_size():
+    """A picker shows the strongest first, because those are the ones whose
+    choice changes the answer most."""
+    c = _mb_connectome()
+    c.neurons.loc[0, "type"] = "ORN_DA1"  # move one ORN from DM1 to DA1
+    counts = glomeruli(c)
+    assert list(counts.index) == ["DA1", "DM1"]
+    assert list(counts) == [3, 1]
+
+
+def test_listing_glomeruli_fails_loudly_without_any():
+    c = _mb_connectome()
+    c.neurons["type"] = "KCg-m"
+    with pytest.raises(KeyError, match="ORN_"):
+        glomeruli(c)
 
 
 def test_kc_slopes_cover_every_kenyon_type():
