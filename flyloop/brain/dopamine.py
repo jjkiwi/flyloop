@@ -12,6 +12,20 @@ That rule is the measured one. In the fly, pairing DAN activity with KC activity
 depressing the output of the cells active during a rewarded experience shifts
 behaviour toward approach.
 
+**The PAM cluster picks the place, it does not carry the signal.** Dopamine is
+signed 0 in :mod:`flyloop.connectome.signs`, because the model has no mechanism
+for neuromodulation, so every PAM neuron's outgoing synapse is deleted from the
+matrix. Measured rather than assumed: the 316 PAM cells have **zero** outgoing
+edges in the signed graph, and driving all of them at full strength changes no
+Kenyon cell's activation by any amount at all. Reward therefore reaches the
+model only as the scalar handed to :meth:`MushroomBodyPlasticity.step`, applied
+at the KC->MBON synapses the animal's dopamine acts on.
+
+That is the right approximation for a model with no neuromodulation, and it is
+what every run in this project has actually measured. But "reward reaches the
+brain through the PAM cluster" reads as signal flow that does not happen here,
+and this project said that for several runs before checking.
+
 **Two honest caveats, both structural.**
 
 *Reward shaping is not biology.* Scaling reward continuously with closeness to a

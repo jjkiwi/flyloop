@@ -11,9 +11,15 @@ For approaching an object that is a defensible approximation: the animal's
 decision at each moment depends on where the object is now. For anything about
 motion direction it is not, and this loop cannot be used for that.
 
-Reward reaches the brain through the fly's own PAM cluster and acts on its own
-KC->MBON synapses. The steering readout is unchanged and unfitted: turn is the
-left-right difference of DNa02, as in every run before this one.
+Reward is addressed to the fly's own PAM cluster and acts on its own KC->MBON
+synapses. **Addressed, not propagated**: dopamine is signed 0 in this model, so
+the PAM neurons' own synapses carry nothing and driving all 316 of them changes
+no Kenyon cell by any amount. What the reward actually does is enter the
+plasticity rule as a scalar, at the synapses the animal's dopamine acts on. The
+cluster picks *where*; it does not carry the signal there.
+
+The steering readout is unchanged and unfitted: turn is the left-right
+difference of DNa02, as in every run before this one.
 """
 
 from __future__ import annotations

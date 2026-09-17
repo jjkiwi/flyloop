@@ -1655,3 +1655,82 @@ subtypes: `R1-R6`, `R7d/p/y`, `R8d/p/y` and the `_unclear` variants. Types like
 
 - Check whether the `unclear` transmitter class in MaleCNS (2,464 neurons, sign
   0 here) concentrates anywhere that matters.
+
+## Run 16 — auditing our own prose: what the sign table deletes, and what PAM does not do
+
+**Date** 2026-09-17
+**Data, model** MaleCNS v1.0, input-proportion weights.
+**Question** Neurons signed 0 have their outgoing synapses removed from the
+matrix. That is a documented modelling choice. How much does it remove, where,
+and does anything this project claims depend on weight that is not there?
+
+### The size of the hole
+
+3,005 neurons carry sign 0: 2,464 `unclear`, 392 dopamine, 101 octopamine, 48
+serotonin. Measured against the **unsigned** matrix, because the signed one has
+already deleted them and reports 0.00% if you ask it:
+
+| | |
+|---|---:|
+| neurons signed 0 | 3,005 of 161,429 (1.86%) |
+| connection weight they would carry | 3,645.6 of 161,066 (**2.263%**) |
+
+For the cells this project reads it is small: DNa02 loses 0.814% of its input,
+DNa01 1.195%, LC4 0.188%, LPLC2 0.513%.
+
+For the mushroom body it is not. **KCg-m loses 12.631% of its input and MBON01
+5.517%**, because the dopaminergic neurons that feed them are exactly the
+population being silenced.
+
+### Which means the reward never travelled where we said it did
+
+`flyloop.brain.dopamine` and several run descriptions said reward "reaches the
+brain through the fly's own PAM cluster". Checked directly:
+
+- The 316 PAM neurons have **zero outgoing edges** in the signed matrix.
+- Driving all 316 at full strength changes the activation of those 316 cells and
+  **nothing else**. Change in any Kenyon cell: **0.000000**.
+
+So injecting reward at PAM in the rate model does literally nothing. What has
+been doing the work all along is the scalar handed to
+`MushroomBodyPlasticity.step`, applied at the KC→MBON synapses.
+
+**No result changes.** Every run measured the plasticity rule, and the
+plasticity rule is what was always running; Runs 6 and 7 even concluded that
+dopamine changes the weights and not the behaviour, which is exactly what a
+non-propagating cluster produces. What was wrong was the prose. The cluster
+selects *which* synapses learn -- correctly, they are the animal's -- but it does
+not carry the signal there, and five files said or implied that it did.
+
+Corrected in `dopamine.py`, `loop_rate.py`, `hybrid.py`, `olfactory.py` and the
+README, with the measurement stated rather than the claim softened.
+
+### Why this took fifteen runs to notice
+
+The claim was never tested because it was never a number. Every quantitative
+check in this project has been of a value some function returns; "reward reaches
+the brain through PAM" returns nothing, so nothing compared it against anything.
+It survived because it was plausible, well-sourced in the biology, and adjacent
+to code that did work.
+
+### What this does not show
+
+- **It is not an argument for signing dopamine non-zero.** The model has no
+  mechanism for neuromodulation and a fast excitatory dopamine synapse would be
+  a worse lie than a deleted one. The choice stands; only its description
+  changes.
+- The 2.263% figure is of input-proportion weight, not synapse count, and
+  `unclear` is 82% of the deleted neurons — mostly cells whose transmitter was
+  never predicted rather than modulators.
+- Nothing here checks whether the `unclear` cells are concentrated in a pathway
+  that matters for some *other* question. They are not concentrated in ours.
+
+### A note on the visual input, found in the same pass
+
+The project's eye does not drive photoreceptors. `HexWorldView` paints the
+stimulus onto **1,767 L1 and 1,767 L2 cells** -- the first-order lamina
+interneurons -- and L1 is cholinergic (+1) while L2 is glutamatergic (−1). So the
+model's visual front end has an ON/OFF split by transmitter at its first stage,
+and the photoreceptor layer is bypassed entirely. That is why Run 15's
+photoreceptor sign fix changed nothing on MaleCNS: the sign it corrects is
+upstream of where this project injects.

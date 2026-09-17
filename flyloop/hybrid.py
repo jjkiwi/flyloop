@@ -10,7 +10,9 @@ and the wiring is what decides it rather than a modelling preference:
   one.
 
 So the loop runs in two phases. In **training** the fly meets an odour paired
-with dopamine delivered through its own PAM cluster, and the coincidence
+with dopamine addressed to its own PAM cluster -- see
+:mod:`flyloop.brain.dopamine` on what that does and does not mean -- and the
+coincidence
 depresses KC->MBON synapses -- the measured rule, not an abstract reward
 signal. In **behaviour** it looks at an object and walks, with the visual
 reflex of Run 10 unchanged, while the learned odour valence scales how hard it

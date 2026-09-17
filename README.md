@@ -111,7 +111,8 @@ flyloop --data-root ~/connectome_data_prep approach --steps 45
 
 Starting 23 degrees off-axis, the fly turns to face a dark target and holds it
 there — object fixation, the behaviour this circuit is known for. Reward reaches
-the brain through the fly's own PAM cluster (316 dopaminergic neurons), scaled
+the plasticity rule addressed to the fly's own PAM cluster (316 dopaminergic
+neurons, whose own synapses carry nothing here -- see below), scaled
 by closeness, and depresses its own KC→MBON synapses.
 
 | condition | closed | mean \|bearing\| | KC→MBON depression |

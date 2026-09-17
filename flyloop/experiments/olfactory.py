@@ -1,6 +1,6 @@
 """Approaching an odour source, where dopamine can actually change something.
 
-Run 6 delivered reward to the fly's own PAM cluster, scaled by closeness to a
+Run 6 addressed reward to the fly's own PAM cluster, scaled by closeness to a
 visual target, and it changed the KC->MBON weights and nothing else. The graph
 said why: Kenyon cells receive 99.5% of their input from the olfactory pathway
 and almost none from vision, and the mushroom body's output lands on descending
