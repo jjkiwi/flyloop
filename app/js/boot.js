@@ -554,6 +554,9 @@ function wireTimeline(D, onFrame) {
 function wireStimulus(D) {
   const panel = $("stim-panel");
   const toggle = $("stim-toggle");
+  // The single-file demo ships without them: there is no server behind it to
+  // run a stimulus, and a button that cannot work is worse than no button.
+  if (!panel || !toggle) return;
   const form = $("stim-form");
   const status = $("stim-status");
   const runBtn = $("stim-run");

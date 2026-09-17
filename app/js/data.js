@@ -60,13 +60,28 @@ export function halfSelfTest() {
 
 // --------------------------------------------------------------- fetch
 
+/**
+ * The single-file build drops every asset into this map before the module
+ * runs, because a page opened by double-clicking cannot fetch its neighbours:
+ * `file://` requests are cross-origin to each other. Served normally the map
+ * is absent and both helpers fetch as before.
+ */
+function embedded(name) {
+  const bag = globalThis.__FLYLOOP_ASSETS;
+  return bag && Object.hasOwn(bag, name) ? bag[name] : null;
+}
+
 async function getJSON(name) {
+  const held = embedded(name);
+  if (held) return JSON.parse(new TextDecoder().decode(held));
   const r = await fetch(DATA + name);
   if (!r.ok) throw new Error(`${DATA}${name}: HTTP ${r.status}`);
   return r.json();
 }
 
 async function getBuffer(name) {
+  const held = embedded(name);
+  if (held) return held.buffer.slice(held.byteOffset, held.byteOffset + held.byteLength);
   const r = await fetch(DATA + name);
   if (!r.ok) throw new Error(`${DATA}${name}: HTTP ${r.status}`);
   return r.arrayBuffer();

@@ -100,3 +100,33 @@ clock to simulate 0.05 s. There is no live mode and there is not going to be one
   this was built on (the egress proxy answers 000), so a CDN importmap would
   have shipped a viewer nobody had ever seen render. `vendor/` holds the
   upstream r169 files unmodified.
+
+
+## One file you can email
+
+```bash
+python app/build_single.py app/data flyloop-demo.html
+```
+
+Folds the viewer, three.js and two recorded episodes into a single ~4 MB HTML
+file that opens by double-clicking. No server, no network, no install.
+
+It replays; it cannot run a new stimulus, because there is no Python behind it.
+The panel is removed rather than left there greyed out.
+
+Two things about `file://` shape how it is built, and both are worth knowing
+before editing `build_single.py`:
+
+- **A page opened from disk cannot fetch its neighbours.** Every file is its own
+  origin. So the assets are gzipped, base64'd and inlined, and `js/data.js`
+  checks `globalThis.__FLYLOOP_ASSETS` before reaching for the network. Served
+  normally that map is absent and nothing changes.
+- **A module script cannot import from `file://` either**, but an *inline*
+  module with no imports is allowed. So everything is concatenated into one:
+  three.js and OrbitControls each inside their own function, because three
+  exports a class called `Controls` and OrbitControls imports one, and flat
+  concatenation makes that a redeclaration that fails to parse.
+
+The meshes are decimated to 59,045 triangles from 502,781 for this build --
+`export_rig(decimate_to=60000)` -- which takes `meshes.bin` from 6.7 MB to 1.0.
+The fly is visibly faceted up close and fine at the distance the camera sits.
