@@ -40,7 +40,11 @@ import pandas as pd
 
 from .body.kinematic import Arena, KinematicBody
 from .brain.coupling import LearnedBias, learned_bias
-from .brain.dopamine import dopaminergic, proximity_reward
+from .brain.dopamine import (
+    concentration_reward,
+    dopaminergic,
+    proximity_reward,
+)
 from .brain.rate import population_index, rate_brain, steady_state
 from .connectome.schema import Connectome
 from .experiments.olfactory import (
@@ -202,6 +206,32 @@ class HybridLoop:
         self.trained_odour = trained
         self.control_odour = control
 
+    def set_profile_odours(self, trained, control, *, concentration: float = 1.0) -> None:
+        """Use measured chemical response profiles instead of named glomeruli.
+
+        ``trained`` and ``control`` are glomerulus-indexed response profiles, as
+        :func:`~flyloop.experiments.odorants.door_profile` returns them. The
+        difference from :meth:`set_odours` is that each glomerulus arrives at the
+        strength the chemical actually evokes rather than at 1.0, so the input is
+        a substance rather than a set of names.
+
+        ``concentration`` scales the trained odour only. The control stays where
+        it is, because it is the fixed reference the trained odour's change is
+        measured against; scaling both would move the ruler with the thing being
+        measured.
+        """
+        from .experiments.odorants import profile_odour
+
+        self.odours = {
+            "trained": profile_odour(
+                self.c, trained, self.orn, concentration=concentration
+            ),
+            "control": profile_odour(self.c, control, self.orn),
+        }
+        self.trained_odour = tuple(dict(trained))
+        self.control_odour = tuple(dict(control))
+        self.concentration = float(concentration)
+
     def kc_code(self) -> dict[str, float]:
         """How each odour lands on the Kenyon cells, and how far apart they are.
 
@@ -312,7 +342,14 @@ class HybridLoop:
 
     # ------------------------------------------------------------- training
 
-    def train(self, n_trials: int = 8, *, odour_name: str = "trained") -> pd.DataFrame:
+    def train(
+        self,
+        n_trials: int = 8,
+        *,
+        odour_name: str = "trained",
+        concentrations=None,
+        reward_gain: float = 1.0,
+    ) -> pd.DataFrame:
         """Pair an odour with dopamine, and let the synapses record it.
 
         The body does not move: this is the fly on a rig, learning a smell.
@@ -321,17 +358,29 @@ class HybridLoop:
         that makes a graded association learnable here.
         """
         start = len(self.rows)
-        smell = self.odours[odour_name]
+        base = self.odours[odour_name]
+        # A concentration series replaces the approach ramp: the substance is
+        # present at a stated amount and the dopamine is proportional to it,
+        # rather than the reward standing in for getting closer to a source.
+        series = None if concentrations is None else [float(x) for x in concentrations]
+        if series is not None:
+            n_trials = len(series)
         out = []
         for trial in range(n_trials):
-            # Closer each trial, so both the odour and the reward grow.
-            distance = self.reward_scale * (1.0 - trial / max(n_trials, 1))
-            reward = proximity_reward(distance, scale=self.reward_scale)
+            if series is None:
+                # Closer each trial, so both the odour and the reward grow.
+                distance = self.reward_scale * (1.0 - trial / max(n_trials, 1))
+                reward = proximity_reward(distance, scale=self.reward_scale)
+                smell = base
+            else:
+                dose = series[trial]
+                reward = concentration_reward(dose, scale=reward_gain)
+                smell = base * dose
             # Paired here too, not just in the behaviour phase. Without it the
             # training rows report the raw readout as if it were the learned
             # change, which looks like a large effect on trial one and is really
             # just the odour's innate response.
-            inp = steady_state(self._input(smell=smell * 1.0, reward=reward), self.hops)
+            inp = steady_state(self._input(smell=smell, reward=reward), self.hops)
             res, _, naive = self._paired_readout(inp)
             self.learned.baseline = naive
             acts = res.activations
@@ -345,7 +394,11 @@ class HybridLoop:
                 reward=reward,
                 depression=depression,
                 modulation=float("nan"),
-                extra={"trial": trial, "odour": odour_name},
+                extra={
+                    "trial": trial,
+                    "odour": odour_name,
+                    "concentration": 1.0 if series is None else series[trial],
+                },
             )
             self.rows.append(row)
             out.append(row)

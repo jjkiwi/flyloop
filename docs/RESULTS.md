@@ -1799,6 +1799,121 @@ first time, since a matched pair can now be searched for instead of assumed.
 
 ---
 
+## Run 18 — D-2HG: the substance the fly cannot smell, and what stood in for it
+
+**The request was to train the brain on D-2-hydroxyglutarate, rewarding it with
+dopamine proportional to concentration. The first half of that cannot be done
+and the reason is chemical, not computational.**
+
+D-2HG is a dicarboxylic acid, ionised at physiological pH and effectively
+non-volatile. It is measured in blood, urine and tissue, never in air.
+*Drosophila* olfaction detects volatiles. Checked rather than assumed: it
+appears in none of the prepared odorant datasets -- not DoOR's 693 chemicals,
+not Hallem-Carlson, not Dweck's 116-compound glomerular map. There is no
+glomerular response to D-2HG because nobody can record one.
+
+**So the stimulus is a proxy with a stated derivation.** D-2HG is the reduced
+form of 2-oxoglutarate, and DoOR carries the nearest measured homologue of
+that: **2-oxovaleric acid**, the five-carbon alpha-keto acid. Its profile runs
+through the ionotropic receptors -- IR64a onto DC4 (0.90) and DP1m (0.51),
+IR75a onto DP1l, IR84a onto VL2a, IR31a onto VL2p -- which is the acid-sensing
+pathway an alpha-keto or alpha-hydroxy diacid would engage if it engaged
+anything. Every result below is a result about that, and the substitution
+travels with it.
+
+### A chemical is now an input, not a list of names
+
+Run 17 put glomerulus *names* in the interface. This puts **chemicals** in,
+by joining DoOR's 693x79 response matrix to its receptor-to-glomerulus table.
+Sensillum-level rows spanning several glomeruli ("VL1+DP1l+VC5 via ac2") are
+dropped rather than spread, because spreading invents specificity the recording
+does not have; the proxy loses 39% of its response that way and the profile
+reports it.
+
+### Finding the control cost more than finding the stimulus
+
+The obvious control, ethyl acetate, is unusable: it drives **49% of Kenyon
+cells** against the proxy's 3.9%, at **87.5% overlap**. That is Run 9's failure
+exactly -- depress one odour and you depress the other.
+
+So the control was searched for rather than picked, which Run 17 said was now
+possible. Screening all 693 DoOR chemicals for recruitment matched to the proxy
+and minimal overlap gave **isoamyl tiglate**: 3.86% of Kenyon cells against the
+proxy's 3.94%, 6.9% overlap, and a different receptor family (ester through
+ORs, not acid through IRs). Glomerulus-level disjointness, the naive criterion,
+selects for odours that drive nothing at all -- thirteen candidates at 0.0%
+overlap recruit 0.00-0.27% of Kenyon cells, which is not an unrewarded odour
+but an absent one.
+
+### The proxy is representable, and recruitment tracks concentration
+
+| concentration | Kenyon cells driven |
+| ---: | ---: |
+| 0.125 | 0.12% |
+| 0.25 | 0.52% |
+| 0.50 | 1.57% |
+| 0.75 | 2.83% |
+| 1.00 | 3.94% |
+
+At full strength it lands near the published ~5% sparse code -- closer than
+DM1+DM4 (1.11%), the pair this project has used for seventeen runs.
+
+### Dopamine proportional to concentration: the plasticity follows exactly
+
+Eight trials at each concentration, reward = concentration:
+
+| concentration | KC->MBON depression |
+| ---: | ---: |
+| 0.125 | 0.0000034 |
+| 0.25 | 0.00133 |
+| 0.50 | 0.00964 |
+| 0.75 | 0.0221 |
+| 1.00 | 0.0356 |
+
+**Spearman rho = 1.000.** Proportional dopamine produces proportional
+depression, with no threshold and no saturation in this range.
+
+### But the reward-specific part has a threshold, and that is the real result
+
+Depression alone does not mean the fly learned *that odour*: the valid test is
+the same odour rewarded versus not, run twice with the roles swapped, which
+cancels the odour-identity term (`within_odour_effect`, established in Run 7).
+Negative means the odour fell further when it was the rewarded one.
+
+| concentration | proxy, extra fall when rewarded | control, same |
+| ---: | ---: | ---: |
+| 0.25 | +7.7e-07 | -1.9e-05 |
+| 0.50 | **+5.4e-05** | -1.3e-05 |
+| 0.75 | -7.6e-05 | -5.5e-05 |
+| 1.00 | -7.9e-05 | -2.3e-05 |
+
+At 0.75 and 1.00 the proxy behaves correctly. At 0.25 the effect is a hundred
+times smaller than at full strength -- absent, not wrong. **At 0.50 it has the
+wrong sign at a magnitude comparable to the real effect, and that is not
+explained.** It sits where Kenyon cell recruitment is climbing steeply
+(1.6%), so a plausible reading is that which Kenyon cells cross threshold is
+still changing with dose there, and the set being depressed is not the set
+being probed. That is a hypothesis, not a result.
+
+The control odour shows the correct sign at every concentration, which argues
+the machinery works and the proxy's low-dose behaviour is specific to it.
+
+### Honest limits
+
+The rate model is deterministic, so repeats are identical and none were run --
+these are single measurements per cell, and the 0.50 anomaly cannot be averaged
+away or confirmed by reseeding. Concentration is a linear scale on receptor
+drive; real ORN dose-response curves are sigmoid in log concentration and
+saturate, so nothing here supports a claim about the *shape* of the dose
+relation, only its monotonicity. And the coupling to behaviour is still 0.53%:
+this is learning measured at the mushroom body output, not a fly that avoids
+or approaches anything because of it.
+
+**Next.** The 0.50 sign flip, with recruitment measured per trial rather than
+once, to test whether the depressed and probed Kenyon cell sets diverge there.
+
+---
+
 # Open questions, as of Run 17
 
 Each run's **Next** section records what looked worth doing *at the time*, and

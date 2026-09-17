@@ -217,3 +217,33 @@ def mushroom_body_plasticity(
     )
     plastic.attach(values)
     return plastic
+
+
+def concentration_reward(
+    concentration: float, *, scale: float = 1.0, cap: float = 1.0
+) -> float:
+    """Dopamine in direct proportion to how much of the substance is present.
+
+    ``reward = min(scale * concentration, cap)``. Deliberately the simplest
+    thing that can be called proportional, because the point of a dose-response
+    experiment is to vary one quantity and read the other, and any curvature
+    put in here would come back out of the result looking like biology.
+
+    It differs from :func:`proximity_reward` in what it claims. Proximity
+    reward is reward shaping -- an RL convenience standing in for an approach
+    gradient. This one is the ordinary case of a reinforcer whose strength
+    scales with the amount delivered, which is closer to what a dopaminergic
+    reward signal is for. Both remain a scalar handed to the plasticity rule;
+    neither is dopamine flowing through the graph, for the reason in this
+    module's docstring.
+
+    ``cap`` exists because the plasticity rule multiplies by this number and
+    nothing downstream is normalised: without it a high concentration does not
+    mean strong learning, it means a depression step large enough to drive
+    weights negative in one trial.
+    """
+    if concentration < 0:
+        raise ValueError("concentration cannot be negative")
+    if scale < 0:
+        raise ValueError("reward scale cannot be negative")
+    return float(min(scale * concentration, cap))
