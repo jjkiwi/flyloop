@@ -330,6 +330,13 @@ hexapod over a socket, touches one file.
    same readout. *Done*; see Run 10. The adapter targets FlyGym 1.x
    (`flygym-gymnasium`), which runs from Python 3.10 up; 2.x needs 3.12 exactly.
 5. **A physical hexapod** -- brain on a workstation, body on a Pi, over a socket.
+   *Not started.* The software side is tractable; the hardware is not in this
+   repository's reach.
+
+`docs/RESULTS.md` ends with an index of what is still open, ranked. The top item
+is a control graph that preserves each neuron's excitation-inhibition balance:
+it has been asked for in four separate runs and never built, and until it exists
+every "this depends on the measured wiring" claim here is weaker than it reads.
 
 See `docs/PLAN.md` for the roadmap and `docs/DATA.md` for getting real data.
 

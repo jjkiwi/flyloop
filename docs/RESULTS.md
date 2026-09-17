@@ -1734,3 +1734,72 @@ model's visual front end has an ON/OFF split by transmitter at its first stage,
 and the photoreceptor layer is bypassed entirely. That is why Run 15's
 photoreceptor sign fix changed nothing on MaleCNS: the sign it corrects is
 upstream of where this project injects.
+
+---
+
+# Open questions, as of Run 16
+
+Each run's **Next** section records what looked worth doing *at the time*, and
+several of those have since been done elsewhere in this log. Rather than edit
+the history, this index supersedes them. It is the current view.
+
+## Closed since they were written
+
+| asked in | question | answered in |
+|---|---|---|
+| Run 6 | pair reward with an olfactory stimulus, where the mushroom body actually learns | Run 12 — `HybridLoop` |
+| Run 8 | model the MBON ensemble readout explicitly | Run 9 — valence-weighted balance |
+| Run 10 | sweep the bearing; a single 35° offset cannot distinguish proportional from bang-bang | Run 13 — proportional, R² 0.845 open-loop |
+| Run 11 | the same atlas map on a rewired graph | Run 13 — controls table |
+| Run 12 | route the coupling through DNa03 and re-measure | Run 12 amendment — 4.11× more coupling, but the carriers are LAL types, not DNa03 |
+| Run 13 | does FlyWire show the same lean? | Run 14 — no; LC4 imbalance is 3× smaller there |
+| Run 14 | the loader reads FlyWire now | Runs 14, 15 |
+| Run 14 | FlyWire's own `sign` column against ours | Run 15 — 98.86% agreement, glutamate unanimous |
+
+## Still open, in the order they are worth doing
+
+**1. A control graph that preserves E/I balance per neuron.** Asked for in Runs
+1, 2, 5 and 7 and never built — the most-requested item in this log by a wide
+margin. All three existing controls change the excitation-inhibition balance at
+the same time as they change the wiring, so every "this depends on the measured
+connectome" claim is weaker than it reads: we cannot yet say whether the
+rewiring broke the result or the balance did. This changes the standing of
+findings already made, which is why it outranks anything that adds new ones.
+
+**2. The front end.** Runs 4 and 5 both concluded: *do not build the closed loop
+on the current front end.* Per-cell-type biases and slopes are set by hand, not
+fitted. Two routes, both large: a trained `flyvis` front end (needs network
+access and Python 3.12), or fitting per-type gain against published firing
+rates. Until one of them exists, everything here is a statement about wiring
+under assumed excitability, and is labelled as such in every run.
+
+**3. Closed-loop bearing sweep with seeds.** Run 13 measured the controller
+open-loop. Run 10 measured one bearing closed-loop. Neither tells us how
+fixation accuracy varies with where the object starts.
+
+**4. Longer episodes: does it arrive, or orbit?** Run 10's fly closes 8 mm of 25
+in 1.5 s and the run ends. Nothing tests approach to contact.
+
+**5. Learning rate against number of trials.** Runs 9 and 12 both note the two
+trade off and neither locates the optimum. 8 trials at lr 0.2 depresses 1.05%.
+
+**6. Several odour pairs matched for sparseness.** Runs 7 and 9: one pair, and
+odour B's sign flips between learning rates.
+
+**7. `relabel_neurons` and `scramble_signs` on the embodied run.** Run 10 used
+only the rewired control, for time.
+
+**8. LPLC2 and the ablations.** Runs 1 and 2: repeat the activation sweep with
+LPLC2, and ablate DNp04 and DNp02 to confirm the escape response collapses.
+
+**9. The `unclear` transmitter class.** 2,464 MaleCNS neurons signed 0. Run 16
+showed they cost the readout under 1% — but nothing checks whether they are
+concentrated somewhere that matters for a different question.
+
+**10. Probe angular size.** Run 13: if the linear range scales with it the
+controller reads angular position; if not, it reads which columns are lit, which
+is a weaker claim.
+
+**11. Temporal dynamics.** Run 5: the rate model's time axis is the synaptic-hop
+axis, so nothing here can address motion direction or the optomotor response.
+That needs a different model, not a further experiment.
