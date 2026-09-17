@@ -1655,5 +1655,3 @@ subtypes: `R1-R6`, `R7d/p/y`, `R8d/p/y` and the `_unclear` variants. Types like
 
 - Check whether the `unclear` transmitter class in MaleCNS (2,464 neurons, sign
   0 here) concentrates anywhere that matters.
-- Check whether the `unclear` transmitter class in MaleCNS (2,464 neurons, sign
-  0 here) concentrates anywhere that matters.
