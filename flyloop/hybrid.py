@@ -187,6 +187,18 @@ class HybridLoop:
         self.brain.values[self.plastic.entry_index] = held
         return res, trained, naive
 
+    def reset_learning(self) -> None:
+        """Put the KC->MBON weights back as they were before any training.
+
+        Building a loop costs about 15 s, almost all of it the rate model and
+        the MBON ensemble, and neither depends on what the fly has learned. So
+        an interactive server keeps one loop alive and calls this between runs
+        instead of rebuilding, which turns a 30 s request into a 13 s one.
+        """
+        self.brain.values[self.plastic.entry_index] = self._naive
+        self.plastic.history.clear()
+        self.learned.baseline = 0.0
+
     def reset(self) -> None:
         self.body.reset()
         self.t = 0.0

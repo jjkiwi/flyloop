@@ -91,6 +91,8 @@ async function main() {
     updateHud(D, frame);
   });
 
+  wireStimulus(D);
+
   boot.classList.add("gone");
   setTimeout(() => boot.remove(), 400);
 }
@@ -536,4 +538,108 @@ function wireTimeline(D, onFrame) {
   })(performance.now());
 
   set(0);
+}
+
+
+/* ------------------------------------------------------------- stimulus */
+
+/**
+ * The form that hands a stimulus to the server and reloads on the result.
+ *
+ * A run is a page reload rather than an in-place swap. The rig and the atlas
+ * come from the browser cache either way, and the alternative -- tearing down
+ * two WebGL scenes and rebuilding them from a new episode -- is a lot of state
+ * to get wrong for no visible gain.
+ */
+function wireStimulus(D) {
+  const panel = $("stim-panel");
+  const toggle = $("stim-toggle");
+  const form = $("stim-form");
+  const status = $("stim-status");
+  const runBtn = $("stim-run");
+
+  toggle.addEventListener("click", () => {
+    panel.hidden = !panel.hidden;
+    toggle.textContent = panel.hidden ? "set a stimulus" : "hide";
+  });
+
+  const bearing = $("f-bearing");
+  const showBearing = () => {
+    const v = Number(bearing.value);
+    $("o-bearing").textContent =
+      `${v > 0 ? "+" : ""}${v}\u00b0 ${v === 0 ? "(dead ahead)" : v > 0 ? "right" : "left"}`;
+  };
+  bearing.addEventListener("input", showBearing);
+  showBearing();
+
+  // Seed the form from the episode on screen, so "run" starts from what you
+  // are looking at rather than from defaults you did not choose.
+  const spec = D.episode.spec;
+  if (spec) {
+    for (const [id, key] of [
+      ["f-bearing", "bearing"], ["f-distance", "distance"], ["f-radius", "radius"],
+      ["f-train", "train_trials"], ["f-gain", "gain"], ["f-steps", "steps"],
+    ]) {
+      if (spec[key] !== undefined) $(id).value = spec[key];
+    }
+    if (spec.odour !== undefined) $("f-odour").value = spec.odour || "none";
+    if (spec.coupling_hops) $("f-hops").value = String(spec.coupling_hops);
+    if (spec.body) $("f-body").value = spec.body;
+    showBearing();
+  }
+
+  const estimate = () => {
+    const steps = Number($("f-steps").value) + Number($("f-train").value);
+    const per = $("f-body").value === "physics" ? 2.0 : 0.29;
+    return Math.round(steps * per);
+  };
+  const showEstimate = () => {
+    $("body-hint").textContent =
+      $("f-body").value === "physics"
+        ? `legs and contact physics, about ${estimate()} s for this run`
+        : "calibrated to the physics body it stands in for";
+  };
+  for (const id of ["f-body", "f-steps", "f-train"]) {
+    $(id).addEventListener("input", showEstimate);
+  }
+  showEstimate();
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    runBtn.disabled = true;
+    const began = performance.now();
+    const tick = setInterval(() => {
+      const s = ((performance.now() - began) / 1000).toFixed(0);
+      status.textContent = `running\u2026 ${s}s of roughly ${estimate()}s`;
+    }, 500);
+
+    try {
+      const res = await fetch("./api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bearing: Number(bearing.value),
+          distance: Number($("f-distance").value),
+          radius: Number($("f-radius").value),
+          odour: $("f-odour").value,
+          train_trials: Number($("f-train").value),
+          steps: Number($("f-steps").value),
+          gain: Number($("f-gain").value),
+          coupling_hops: Number($("f-hops").value),
+          body: $("f-body").value,
+        }),
+      });
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.error || res.statusText);
+      clearInterval(tick);
+      status.textContent = `done in ${out.seconds}s, loading\u2026`;
+      location.search = `?ep=${encodeURIComponent(out.name)}`;
+    } catch (err) {
+      clearInterval(tick);
+      // A failed run is usually a server that is not the run endpoint -- the
+      // plain static server has no /api/run -- so say which one is in front.
+      status.textContent = `failed: ${err.message}. Started with \`flyloop serve\`?`;
+      runBtn.disabled = false;
+    }
+  });
 }

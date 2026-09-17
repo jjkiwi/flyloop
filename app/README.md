@@ -4,12 +4,35 @@ A browser view of one recorded run: the fly walking on the left, its brain on
 the right, both scrubbing on one timeline.
 
 ```bash
-python -m http.server 8000 --directory app
+flyloop --data-root ~/connectome_data_prep serve
 # then open http://127.0.0.1:8000/
 ```
 
-It needs a static server. Opening `index.html` from the filesystem fails --
+That serves the viewer **and** a run endpoint, so the panel at the top can hand
+the fly a stimulus you chose and show you what it did. A plain static server
+works too (`python -m http.server 8000 --directory app`) but only replays
+episodes recorded earlier; the run button will say so rather than hang.
+
+Either way it needs a server. Opening `index.html` from the filesystem fails --
 ES modules and `fetch` both refuse `file://`.
+
+## Handing it a stimulus
+
+Set the object's bearing, distance and size, choose whether an odour is in the
+air, how many conditioning trials come first, and press run. About **10 seconds**
+later the page reloads on the result.
+
+The first run costs about 30 s because it loads the connectome and builds the
+rate model. Every run after that is ~10 s: the model is kept alive and only the
+learning is reset, since neither the wiring nor the MBON ensemble depends on
+what the fly has been taught.
+
+`body: physics` swaps in NeuroMechFly and costs about 2 s per control step. The
+form estimates the wait before you commit to it.
+
+**Nothing about this is live.** A control step costs 0.29 s of wall clock to
+simulate 0.05 s even on the fast body. What the endpoint buys is not real time,
+it is the ability to change something and look again.
 
 ## Regenerating the data
 

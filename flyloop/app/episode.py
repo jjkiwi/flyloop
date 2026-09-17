@@ -180,6 +180,7 @@ def record_episode(
         "body": type(loop.body).__name__,
         "train_odour": train_odour,
         "behave_odour": behave_odour or "none",
+        "spec": getattr(loop, "_spec", None),
         "live_types": int(live.sum()),
         "all_types": int(len(live)),
     }

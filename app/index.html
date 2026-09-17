@@ -29,6 +29,7 @@
     <h1>flyloop <span class="sep">/</span> episode player</h1>
     <p id="provenance">loading&hellip;</p>
   </div>
+  <button id="stim-toggle" class="mini big">set a stimulus</button>
   <div class="badges">
     <div class="badge" id="badge-episode">
       <span class="badge-k">episode</span>
@@ -50,6 +51,70 @@
     </div>
   </div>
 </header>
+
+<section id="stim-panel" hidden>
+  <form id="stim-form">
+    <div class="stim-grid">
+      <label>object bearing
+        <input type="range" id="f-bearing" min="-90" max="90" step="5" value="35">
+        <output id="o-bearing">+35&deg;</output>
+        <span class="hint">positive is to the fly's right</span>
+      </label>
+      <label>distance (mm)
+        <input type="number" id="f-distance" min="5" max="120" step="1" value="25">
+        <span class="hint">it walks about 13.7 mm/s</span>
+      </label>
+      <label>object radius (mm)
+        <input type="number" id="f-radius" min="0.5" max="20" step="0.5" value="2.5">
+        <span class="hint">sets how big it looks</span>
+      </label>
+      <label>odour while walking
+        <select id="f-odour">
+          <option value="none">none</option>
+          <option value="trained" selected>trained (DM1, DM4)</option>
+          <option value="control">control (DA1, VA2)</option>
+        </select>
+        <span class="hint">vision cannot be learned here; only smell can</span>
+      </label>
+      <label>conditioning trials
+        <input type="number" id="f-train" min="0" max="40" step="1" value="8">
+        <span class="hint">odour paired with dopamine, fly on a rig</span>
+      </label>
+      <label>coupling gain
+        <input type="number" id="f-gain" min="1" max="1000000" step="1" value="1">
+        <span class="hint">1 is the anatomy as measured, and does nothing visible</span>
+      </label>
+      <label>MBON&rarr;DNa02 route
+        <select id="f-hops">
+          <option value="1" selected>direct (0.53%)</option>
+          <option value="4">within 4 hops (2.14%)</option>
+        </select>
+        <span class="hint">the indirect routes are the larger ones</span>
+      </label>
+      <label>control steps
+        <input type="number" id="f-steps" min="5" max="200" step="5" value="40">
+        <span class="hint">0.05 s each</span>
+      </label>
+      <label>body
+        <select id="f-body">
+          <option value="kinematic" selected>kinematic (fast)</option>
+          <option value="physics">NeuroMechFly (about 2 s per step)</option>
+        </select>
+        <span class="hint" id="body-hint">calibrated to the physics body it stands in for</span>
+      </label>
+    </div>
+    <div class="stim-actions">
+      <button type="submit" id="stim-run">run this stimulus</button>
+      <span id="stim-status"></span>
+    </div>
+    <p class="stim-note">
+      Not live and never will be: a control step costs 0.29 s of wall clock on
+      the kinematic body to simulate 0.05 s. The first run also loads the
+      connectome and builds the rate model, about 30 s; every run after that is
+      about 10 s because the model is kept and only the learning is reset.
+    </p>
+  </form>
+</section>
 
 <main id="stage">
 

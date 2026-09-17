@@ -304,6 +304,16 @@ def cmd_record(args) -> int:
     return 0
 
 
+def cmd_serve(args) -> int:
+    from .app.server import serve
+
+    if not args.data_root:
+        print("serve needs --data-root: the fly has to come from somewhere")
+        return 1
+    serve(args.data_root, port=args.port, dataset=args.dataset)
+    return 0
+
+
 def cmd_controls(args) -> int:
     from .experiments import looming_with_controls
 
@@ -477,6 +487,10 @@ def main(argv: list[str] | None = None) -> int:
         help="how far back to trace MBON input to DNa02; 4 includes the indirect routes",
     )
     p.set_defaults(func=cmd_record, rate_model=True)
+
+    p = sub.add_parser("serve", help="run the viewer with a live stimulus endpoint")
+    p.add_argument("--port", type=int, default=8000)
+    p.set_defaults(func=cmd_serve, rate_model=True)
 
     p = sub.add_parser(
         "controls", help="looming experiment vs shuffled/relabelled control graphs"
