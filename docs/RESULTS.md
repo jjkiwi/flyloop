@@ -1550,3 +1550,92 @@ caution was warranted and can now be stated as a conclusion.
   work on it. The obvious follow-up is the sign-source comparison across both.
 - FlyWire's own `sign` column against ours, on 139,102 neurons, as a second
   check on the glutamate rule.
+
+## Run 15 — the sign table against 300,000 neurons, and a hole in one dataset
+
+**Date** 2026-09-17
+**Data** MaleCNS v1.0 (161,429 neurons) and FlyWire v783 (139,102), each of
+which ships its own `sign` column alongside its transmitter prediction.
+**Question** `flyloop.connectome.signs` is the most consequential table in the
+project. Two datasets assigned signs independently. Do they agree with it?
+
+### The claim that matters is unanimous
+
+| | MaleCNS | FlyWire |
+|---|---:|---:|
+| glutamatergic neurons | 29,058 | 24,917 |
+| their sign, per the dataset | **−1, all of them** | **−1, all of them** |
+
+**53,975 neurons across two reconstructions, no exceptions.** Glutamate is
+inhibitory in the adult central brain, which is what Liu & Wilson measured
+(*PNAS* 2013;110:10294–10299) and what this project has encoded since its first
+commit. The community reimplementations that treat it as excitatory disagree
+with both datasets as well as with the literature.
+
+Acetylcholine (+1) and GABA (−1) agree everywhere too.
+
+### Overall agreement, and what the gap is made of
+
+| dataset | agree | disagree | rate |
+|---|---:|---:|---:|
+| MaleCNS | 153,487 | 7,942 | 95.08% |
+| FlyWire | 137,523 | 1,579 | 98.86% |
+
+Every disagreement is one of two things, and neither is a fast-transmission
+error.
+
+**Neuromodulators, by our choice.** Both datasets give dopamine, octopamine and
+serotonin +1; we give them 0. That is deliberate and documented: the LIF model
+has no mechanism for neuromodulation, and pretending it is fast excitation would
+be worse than leaving it out. 392 + 101 + 48 neurons in MaleCNS, 559 + 65 + 854
+in FlyWire.
+
+**Histamine, where we differ from MaleCNS on substance.** MaleCNS signs its
+4,937 histaminergic neurons +1. Histamine in *Drosophila* gates a chloride
+channel (HisCl1/ort), so the photoreceptor synapse is sign-inverting, and we
+sign it −1. This is the same class of error as the glutamate one, in a dataset's
+own column rather than in a reimplementation.
+
+### FlyWire has no histamine at all, and that inverts its visual system
+
+FlyWire's transmitter prediction returns no histamine for any neuron. Its
+photoreceptors are labelled as something else:
+
+| | MaleCNS | FlyWire |
+|---|---|---|
+| R1-6 | histamine (435) | **acetylcholine (8,325)** |
+| R7 | histamine (482) | **glutamate (1,340)** |
+| R8 | histamine (481) | **acetylcholine (1,324)** |
+| all photoreceptors | 3,145, all histamine | 10,989, none histamine |
+
+This is not a curiosity in a corner of the data. **R1-6 supplies 48.1% of L1's
+input in FlyWire** — L1 being the lamina cell every visual model starts from. A
+sign taken from the transmitter label therefore inverts the first synapse of the
+visual system, and inverts the largest one.
+
+`flyloop.connectome.signs.photoreceptor_check` now tests this, and the loader
+warns when a dataset fails it. MaleCNS passes; FlyWire warns on load.
+
+**So this project's visual work cannot move to FlyWire without correcting
+photoreceptor signs by cell type rather than by transmitter.** Run 14's
+structural comparison is unaffected: it touches mushroom body and descending
+connectivity, where transmitter labels agree.
+
+### What this does not show
+
+- **Agreeing with a dataset's column is not agreeing with nature.** These
+  columns are largely derived from the same kind of transmitter prediction, so
+  two datasets can be wrong together — as they are, together, about histamine
+  and modulators relative to our table.
+- **It does not validate the magnitudes**, only the signs. Every weight in this
+  project is still an input proportion times one free gain.
+- MaleCNS's optic lobe shows a different picture from FlyWire's at L1: R1-6 is
+  not among L1's top inputs there at all, where in FlyWire it is 48%. That is a
+  reconstruction coverage difference this run does not attempt to resolve.
+
+### Next
+
+- Sign photoreceptors by cell type rather than transmitter, which would make
+  FlyWire usable for vision and costs one lookup.
+- Check whether the `unclear` transmitter class in MaleCNS (2,464 neurons, sign
+  0 here) concentrates anywhere that matters.

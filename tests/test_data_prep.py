@@ -271,3 +271,15 @@ def test_two_spellings_of_one_field_do_not_become_two_columns(tmp_path):
     c = load_prepared(folder, min_synapses=5)
     assert isinstance(c.neurons["type"], pd.Series)
     assert c.neurons["type"].iloc[0] == "LC4"
+
+
+def test_the_connectome_keeps_the_name_it_was_given(tmp_path):
+    """A loop variable once shadowed this parameter and renamed every dataset."""
+    c = load_prepared(_write_dataset(tmp_path / "named"), name="malecns", min_synapses=5)
+    assert c.name == "malecns"
+
+
+def test_load_dataset_names_the_connectome_after_the_dataset(tmp_path):
+    root = tmp_path / "data"
+    _write_dataset(root / "maleCNS", prefix="mcns")
+    assert load_dataset(tmp_path, "malecns", min_synapses=5).name == "malecns"

@@ -29,6 +29,7 @@ inherit it.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -251,10 +252,13 @@ def load_prepared(
     # DataFrame instead of a Series, which fails far from here. First spelling
     # in COLUMN_MAP order wins.
     present, taken = {}, set()
-    for source, name in COLUMN_MAP.items():
-        if source in raw.columns and name not in taken:
-            present[source] = name
-            taken.add(name)
+    for source, mapped in COLUMN_MAP.items():
+        # `mapped`, not `name`: this function already has a `name` parameter --
+        # the dataset's -- and shadowing it here renamed every connectome after
+        # the last column processed, which was "soma".
+        if source in raw.columns and mapped not in taken:
+            present[source] = mapped
+            taken.add(mapped)
     # One spelling from each group has to be present, not all of them.
     needed = (("bodyid", "root_id"), ("type", "cell_type"), ("top_nt",))
     missing = [
@@ -283,6 +287,15 @@ def load_prepared(
         raise ValueError(
             f"{files.matrix.name} is {W.shape} but {files.meta.name} has "
             f"{len(neurons)} rows. The metadata must be in matrix order."
+        )
+
+    from .signs import photoreceptor_check
+
+    pr = photoreceptor_check(neurons)
+    if not pr["ok"]:
+        warnings.warn(
+            f"{name or files.meta.name}: {pr['note']} ({pr['by_nt']})",
+            stacklevel=2,
         )
 
     if sign_source == "dataset" and "dataset_sign" in neurons:

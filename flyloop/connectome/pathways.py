@@ -53,9 +53,7 @@ def direct_drive(
     return out
 
 
-def input_balance(
-    c: Connectome, target: str, *, side: str | None = "L", top: int = 8
-) -> dict:
+def input_balance(c: Connectome, target: str, *, side: str | None = "L", top: int = 8) -> dict:
     """Excitation, inhibition and the strongest individual inputs onto a population.
 
     Two neurons with similar excitatory drive can behave completely differently

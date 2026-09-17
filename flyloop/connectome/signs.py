@@ -73,3 +73,51 @@ def unknown_transmitters(nt: pd.Series) -> pd.Series:
     """
     seen = nt.dropna().astype(str).str.strip().str.lower()
     return seen[~seen.isin(NT_SIGN)].value_counts()
+
+
+#: Cell-type patterns for photoreceptors, whose transmitter is not in doubt.
+PHOTORECEPTOR_PATTERN = r"^R[1-8]"
+
+#: What they release. Histamine gates a chloride channel (HisCl1/ort), so the
+#: first synapse of the visual system is sign-inverting.
+PHOTORECEPTOR_NT = "histamine"
+
+
+def photoreceptor_check(neurons) -> dict:
+    """Are this dataset's photoreceptors labelled with the transmitter they use?
+
+    Worth asking of every dataset, because the answer is not always yes and the
+    failure is silent. FlyWire's transmitter prediction has no histamine class:
+    its 8,325 R1-6 cells come back as acetylcholine and its 1,340 R7 as
+    glutamate. MaleCNS labels all 3,145 of its photoreceptors histamine.
+
+    That is not a small discrepancy in a corner of the data. In FlyWire, R1-6
+    supplies **48% of L1's input** -- the lamina cell every visual model starts
+    from -- so a sign taken from the transmitter label inverts the first synapse
+    of the visual system, and inverts the dominant one.
+
+    Returns counts by transmitter plus ``ok``, which is False when any
+    photoreceptor is labelled as something other than histamine.
+    """
+
+    types = neurons["type"].astype(str)
+    hit = types.str.match(PHOTORECEPTOR_PATTERN, na=False)
+    if not hit.any():
+        return {"n": 0, "ok": True, "by_nt": {}, "wrong": 0}
+    nts = neurons.loc[hit, "nt"].astype(str)
+    by = nts.value_counts().to_dict()
+    wrong = int((nts != PHOTORECEPTOR_NT).sum())
+    return {
+        "n": int(hit.sum()),
+        "ok": wrong == 0,
+        "by_nt": by,
+        "wrong": wrong,
+        "note": (
+            ""
+            if wrong == 0
+            else (
+                f"{wrong:,} photoreceptors are not labelled {PHOTORECEPTOR_NT}; "
+                "signs derived from their transmitter will be inverted"
+            )
+        ),
+    }

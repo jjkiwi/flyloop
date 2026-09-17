@@ -44,9 +44,7 @@ def from_neuprint(
     try:
         from neuprint import Client, fetch_adjacencies
     except ImportError as exc:  # pragma: no cover - optional dependency
-        raise ImportError(
-            "neuprint-python is required: pip install 'flyloop[data]'"
-        ) from exc
+        raise ImportError("neuprint-python is required: pip install 'flyloop[data]'") from exc
 
     if criteria is None:
         raise ValueError(
@@ -58,17 +56,25 @@ def from_neuprint(
     client = Client(server, dataset=dataset, token=token)
     neuron_df, conn_df = fetch_adjacencies(criteria, criteria, client=client)
 
-    neurons = pd.DataFrame(
-        {
-            "id": neuron_df["bodyId"],
-            "type": neuron_df.get("type", pd.Series(dtype=str)).fillna("unknown").astype(str),
-            "nt": neuron_df.get("predictedNt", pd.Series(dtype=str))
-            .fillna("unknown")
-            .astype(str),
-            "side": neuron_df.get("somaSide", pd.Series(dtype=str)).fillna("").astype(str),
-            "super_class": neuron_df.get("class", pd.Series(dtype=str)).fillna("").astype(str),
-        }
-    ).drop_duplicates(subset="id").reset_index(drop=True)
+    neurons = (
+        pd.DataFrame(
+            {
+                "id": neuron_df["bodyId"],
+                "type": neuron_df.get("type", pd.Series(dtype=str))
+                .fillna("unknown")
+                .astype(str),
+                "nt": neuron_df.get("predictedNt", pd.Series(dtype=str))
+                .fillna("unknown")
+                .astype(str),
+                "side": neuron_df.get("somaSide", pd.Series(dtype=str)).fillna("").astype(str),
+                "super_class": neuron_df.get("class", pd.Series(dtype=str))
+                .fillna("")
+                .astype(str),
+            }
+        )
+        .drop_duplicates(subset="id")
+        .reset_index(drop=True)
+    )
 
     edges = (
         conn_df.rename(columns={"bodyId_pre": "pre", "bodyId_post": "post"})
@@ -160,8 +166,7 @@ def from_dump(
             "min_synapses": min_synapses,
             "licence": "CC-BY",
             "citation": (
-                "Sexual dimorphism in the complete Drosophila male CNS "
-                "connectome, Cell 2026"
+                "Sexual dimorphism in the complete Drosophila male CNS connectome, Cell 2026"
             ),
         },
     )

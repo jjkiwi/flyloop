@@ -73,3 +73,58 @@ def test_shape_mismatch_is_rejected():
     neurons = pd.DataFrame({"id": [1, 2], "type": ["a", "b"], "nt": ["gaba", "gaba"]})
     with pytest.raises(ValueError):
         Connectome(neurons, sp.csr_matrix((3, 3)))
+
+
+# ------------------------------------------- photoreceptors and their sign
+
+
+def test_photoreceptors_labelled_histamine_pass():
+    import pandas as pd
+
+    from flyloop.connectome.signs import photoreceptor_check
+
+    n = pd.DataFrame(
+        {"type": ["R1-6", "R7", "R8", "L1"], "nt": ["histamine"] * 3 + ["acetylcholine"]}
+    )
+    out = photoreceptor_check(n)
+    assert out["ok"] and out["n"] == 3 and out["wrong"] == 0
+
+
+def test_a_photoreceptor_called_cholinergic_is_flagged():
+    """FlyWire's transmitter prediction has no histamine class, so its R1-6 come
+    back as acetylcholine. Left unflagged that inverts the visual system's first
+    and largest synapse."""
+    import pandas as pd
+
+    from flyloop.connectome.signs import photoreceptor_check
+
+    n = pd.DataFrame(
+        {"type": ["R1-6", "R1-6", "R7"], "nt": ["acetylcholine", "acetylcholine", "glutamate"]}
+    )
+    out = photoreceptor_check(n)
+    assert not out["ok"]
+    assert out["wrong"] == 3
+    assert "inverted" in out["note"]
+    assert out["by_nt"] == {"acetylcholine": 2, "glutamate": 1}
+
+
+def test_a_dataset_with_no_photoreceptors_is_not_flagged():
+    """FlyWire's central-brain-only preparations have none, which is fine."""
+    import pandas as pd
+
+    from flyloop.connectome.signs import photoreceptor_check
+
+    out = photoreceptor_check(pd.DataFrame({"type": ["DNa02"], "nt": ["acetylcholine"]}))
+    assert out["ok"] and out["n"] == 0
+
+
+def test_the_pattern_does_not_catch_unrelated_types():
+    """Plenty of cell types start with R; only R1..R8 are photoreceptors."""
+    import pandas as pd
+
+    from flyloop.connectome.signs import photoreceptor_check
+
+    n = pd.DataFrame(
+        {"type": ["Rostrum", "R9x", "RIM", "R1-6"], "nt": ["acetylcholine"] * 3 + ["histamine"]}
+    )
+    assert photoreceptor_check(n)["n"] == 1

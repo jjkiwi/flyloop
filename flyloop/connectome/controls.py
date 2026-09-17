@@ -41,9 +41,7 @@ from .signs import sign_vector
 def _collapse(row: np.ndarray, col: np.ndarray, data: np.ndarray, n: int) -> sp.csr_matrix:
     """Sum duplicate (row, col) pairs into a CSR matrix, dropping self-loops."""
     keep = row != col
-    W = sp.coo_matrix(
-        (data[keep], (row[keep], col[keep])), shape=(n, n), dtype=np.float32
-    )
+    W = sp.coo_matrix((data[keep], (row[keep], col[keep])), shape=(n, n), dtype=np.float32)
     return W.tocsr()
 
 
@@ -79,9 +77,7 @@ def rewire_degree_preserving(
     )
 
 
-def relabel_neurons(
-    c: Connectome, *, seed: int = 0, name: str | None = None
-) -> Connectome:
+def relabel_neurons(c: Connectome, *, seed: int = 0, name: str | None = None) -> Connectome:
     """Keep the graph exactly, permute which neuron sits at which node.
 
     Topology, degree sequence and weight distribution are untouched; what
@@ -109,9 +105,7 @@ def relabel_neurons(
     )
 
 
-def scramble_signs(
-    c: Connectome, *, seed: int = 0, name: str | None = None
-) -> Connectome:
+def scramble_signs(c: Connectome, *, seed: int = 0, name: str | None = None) -> Connectome:
     """Keep wiring and identities, permute the transmitters across neurons.
 
     Excitatory and inhibitory counts are preserved; which neuron is which is

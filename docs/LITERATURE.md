@@ -38,6 +38,10 @@ glutamatergic.
 
 **Commonly miscited as Nature Neuroscience 16:966–973.** It is PNAS.
 
+**Both datasets agree, unanimously.** MaleCNS and FlyWire each ship a `sign`
+column, and across **53,975 glutamatergic neurons in the two of them together**
+every single one is −1. See Run 15.
+
 **Why reimplementations get the sign backwards.** At the larval neuromuscular
 junction glutamate *is* excitatory, via GluRII. A project that flips the sign is
 usually importing the neuromuscular fact into the adult central brain.

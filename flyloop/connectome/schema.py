@@ -80,9 +80,7 @@ class Connectome:
 
     def _types(self) -> dict[str, np.ndarray]:
         if self._type_index is None:
-            groups = self.neurons.groupby(
-                self.neurons["type"].fillna("").astype(str)
-            ).indices
+            groups = self.neurons.groupby(self.neurons["type"].fillna("").astype(str)).indices
             self._type_index = {k: np.asarray(v, dtype=np.int64) for k, v in groups.items()}
         return self._type_index
 
@@ -99,9 +97,7 @@ class Connectome:
             out = [idx[t] for t in types if t in idx]
         else:
             compiled = [re.compile(p) for p in types]
-            out = [
-                v for k, v in idx.items() if any(c.search(k) for c in compiled)
-            ]
+            out = [v for k, v in idx.items() if any(c.search(k) for c in compiled)]
         if not out:
             return np.empty(0, dtype=np.int64)
         return np.unique(np.concatenate(out))
