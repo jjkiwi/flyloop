@@ -218,6 +218,31 @@ During the training phase the fly is on a rig and its joint angles are NaN. The
 player hides the body and shows the mushroom body instead; posing a fly from
 NaN draws a corpse sliding across the floor and reads as a physics bug.
 
+## The claims are tested, not just written
+
+```bash
+FLYLOOP_DATA_ROOT=~/connectome_data_prep pytest tests/test_claims.py
+```
+
+`tests/test_claims.py` asserts the numbers this README and `docs/RESULTS.md`
+state, against the live connectomes: the 0.53% MBON→DNa02 junction, the exact
+zero from LC4 into Kenyon cells, MBON31 and MBON32 carrying nearly all of it in
+both datasets, every glutamatergic neuron signed negative, the PAM cluster's
+zero out-degree, and the steering curve's linearity and lean. Seventeen claims,
+25 seconds.
+
+It exists because of Run 16. A sentence that had been in five files since Run 6
+— that reward "reaches the brain through the fly's own PAM cluster" — turned out
+to describe signal flow that does not happen: dopamine is signed 0, so those
+316 neurons have no outgoing edges and driving them changes no Kenyon cell by
+any amount. No result was affected; the plasticity rule was always what ran. But
+the claim survived fifteen runs because **it was never a number**, and nothing
+in a test suite compares prose against data.
+
+The net was checked by breaking something on purpose: flipping dopamine's sign
+from 0 to 1 fails exactly one test, the one that guards that claim, and leaves
+the other sixteen green.
+
 ## Quick start
 
 ```bash
