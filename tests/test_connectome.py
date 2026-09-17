@@ -128,3 +128,45 @@ def test_the_pattern_does_not_catch_unrelated_types():
         {"type": ["Rostrum", "R9x", "RIM", "R1-6"], "nt": ["acetylcholine"] * 3 + ["histamine"]}
     )
     assert photoreceptor_check(n)["n"] == 1
+
+
+def test_cell_identity_overrides_a_wrong_photoreceptor_transmitter():
+    """R1-6 releases histamine whatever a transmitter classifier says."""
+    import pandas as pd
+
+    from flyloop.connectome.signs import sign_vector
+
+    nt = pd.Series(["acetylcholine", "glutamate", "acetylcholine"])
+    types = pd.Series(["R1-6", "R7", "L1"])
+    assert sign_vector(nt, types).tolist() == [-1, -1, +1]
+
+
+def test_without_types_the_transmitter_is_taken_at_face_value():
+    """The override is opt-in, so existing callers keep their old behaviour."""
+    import pandas as pd
+
+    from flyloop.connectome.signs import sign_vector
+
+    nt = pd.Series(["acetylcholine", "glutamate"])
+    assert sign_vector(nt).tolist() == [+1, -1]
+
+
+def test_the_override_changes_nothing_when_the_label_was_already_right():
+    import pandas as pd
+
+    from flyloop.connectome.signs import sign_vector
+
+    nt = pd.Series(["histamine", "histamine"])
+    types = pd.Series(["R1-R6", "R7y"])
+    assert sign_vector(nt, types).tolist() == sign_vector(nt).tolist() == [-1, -1]
+
+
+def test_only_photoreceptors_are_overridden():
+    """A general licence to override transmitters by name would be dangerous."""
+    import pandas as pd
+
+    from flyloop.connectome.signs import sign_vector
+
+    nt = pd.Series(["acetylcholine"] * 4)
+    types = pd.Series(["Rostrum", "RIM", "R9", "DNa02"])
+    assert sign_vector(nt, types).tolist() == [+1, +1, +1, +1]

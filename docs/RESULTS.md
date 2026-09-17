@@ -1633,9 +1633,27 @@ connectivity, where transmitter labels agree.
   not among L1's top inputs there at all, where in FlyWire it is 48%. That is a
   reconstruction coverage difference this run does not attempt to resolve.
 
+### Fixed the same day
+
+`sign_vector` now takes an optional cell-type column and lets identity override
+the transmitter label -- **for photoreceptors only**, because they are the one
+population whose transmitter is beyond question from the name alone. A general
+licence to sign cells by their names would be a far worse bug than the one it
+fixes.
+
+After it, FlyWire's 9,073 photoreceptor-to-L1 edges are all inhibitory, where
+before they were all excitatory. MaleCNS is untouched, which is the point: its
+labels were already right, and its headline numbers are unchanged to six
+decimals.
+
+The pattern was checked for false positives rather than assumed safe. It matches
+10 type names in MaleCNS and 3 in FlyWire, and all 13 are genuine photoreceptor
+subtypes: `R1-R6`, `R7d/p/y`, `R8d/p/y` and the `_unclear` variants. Types like
+`Rostrum` and `RIM` do not match.
+
 ### Next
 
-- Sign photoreceptors by cell type rather than transmitter, which would make
-  FlyWire usable for vision and costs one lookup.
+- Check whether the `unclear` transmitter class in MaleCNS (2,464 neurons, sign
+  0 here) concentrates anywhere that matters.
 - Check whether the `unclear` transmitter class in MaleCNS (2,464 neurons, sign
   0 here) concentrates anywhere that matters.

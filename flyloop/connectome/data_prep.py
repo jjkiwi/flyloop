@@ -301,7 +301,9 @@ def load_prepared(
     if sign_source == "dataset" and "dataset_sign" in neurons:
         signs = neurons["dataset_sign"].to_numpy()
     else:
-        signs = sign_vector(neurons["nt"]).to_numpy()
+        # Cell identity overrides the transmitter label for photoreceptors; see
+        # sign_vector and Run 15 for why that is not a general licence.
+        signs = sign_vector(neurons["nt"], neurons.get("type")).to_numpy()
 
     counts = matrix == "syncount"
     cutoff = min_synapses if counts else (min_weight if min_weight is not None else 0.0)

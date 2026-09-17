@@ -60,9 +60,24 @@ def sign_of(nt: str | float | None) -> int:
     return NT_SIGN.get(str(nt).strip().lower(), 0)
 
 
-def sign_vector(nt: pd.Series) -> pd.Series:
-    """Vectorised :func:`sign_of` over a column of transmitter labels."""
-    return nt.map(sign_of).astype("int8")
+def sign_vector(nt: pd.Series, types: pd.Series | None = None) -> pd.Series:
+    """Vectorised :func:`sign_of` over a column of transmitter labels.
+
+    Pass ``types`` to let cell identity override the transmitter label where
+    identity is the more reliable of the two. Only photoreceptors qualify: a
+    cell named R1-6 releases histamine whatever a transmitter classifier says,
+    and FlyWire's classifier has no histamine class, so it calls them
+    acetylcholine and inverts the visual system's first and largest synapse
+    (Run 15). No other type gets this treatment, because no other type has a
+    transmitter that is beyond question from the name alone.
+    """
+    signs = nt.map(sign_of).astype("int8")
+    if types is None:
+        return signs
+    hit = types.astype(str).str.match(PHOTORECEPTOR_PATTERN, na=False)
+    if hit.any():
+        signs = signs.mask(hit, sign_of(PHOTORECEPTOR_NT)).astype("int8")
+    return signs
 
 
 def unknown_transmitters(nt: pd.Series) -> pd.Series:
